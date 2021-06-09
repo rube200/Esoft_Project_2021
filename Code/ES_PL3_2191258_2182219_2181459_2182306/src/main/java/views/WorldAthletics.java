@@ -1,69 +1,61 @@
 package views;
 
+import com.google.inject.Inject;
+import model.Evento;
+import model.Prova;
+
+import javax.persistence.EntityManager;
 import javax.swing.*;
-import java.awt.event.ActionEvent;
+import java.util.List;
 
 public class WorldAthletics extends JFrame {
     private JPanel mainPanel;
-    private JButton btn_atletas;
-    private JButton btn_exit;
-    private JButton btn_gerirPr;
-    private JButton btn_gerirEv;
-    private JTextPane textPane1;
-    private JTextPane textPane2;
-    private JButton btn_tendencias;
-    private JButton btn_medalhas;
-    private JButton btn_new_atleta;
-    private JButton btn_modalidades;
-    private JButton btn_definicoes;
+    private JList<Evento> listEventos;//setLayoutOrientation(JList.HORIZONTAL_WRAP);
+    private final DefaultListModel<Evento> eventosListModel = new DefaultListModel<>();
+    private JList<Prova> listProvas;
+    private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
 
-    public void openView()
-    {
-        this.setVisible(true);
-    }
+    private JButton button1;
+    private JButton buttonAtletas;
+    private JButton buttonModalidades;
+    private JButton buttonInscreverAtleta;
+    private JButton buttonMedalhas;
+    private JButton buttonTendencias;
+    private JButton buttonGerirEventos;
+    private JButton buttonGerirProvas;
+    private JButton buttonSair;
+
+    @Inject
+    private EntityManager entityManager;
 
     public WorldAthletics() {
         super("World Athletics");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setContentPane(mainPanel);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+        listEventos.setModel(eventosListModel);
+        listEventos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        listProvas.setModel(provasListModel);
+        listProvas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    }
+
+    public void prepareData() {
+        eventosListModel.addAll(queryAll(Evento.class));
+        provasListModel.addAll(queryAll(Prova.class));
+    }
+
+    public void openView() {
         pack();
-        setVisible(true);
-
-        btn_exit.addActionListener(this::btn_exitActionPerformed);
-        btn_gerirEv.addActionListener(this::btn_gerirEvActionPerformed);
-        btn_gerirPr.addActionListener(this::btn_gerirPrActionPerformed);
-        btn_atletas.addActionListener(this::btn_atletasActionPerformed);
-        btn_modalidades.addActionListener(this::btn_modalidadesActionPerformed);
+        this.setVisible(true);
     }
 
-    private void btn_modalidadesActionPerformed(ActionEvent actionEvent) {
-        new Modalidades();
-        setVisible(false);
+    private <X> List<X> queryAll(Class<X> entityClass) {
+
+        var builder = entityManager.getCriteriaBuilder();
+        var query = builder.createQuery(entityClass);
+        var allQUERY = query.select(query.from(entityClass));
+        return entityManager.createQuery(allQUERY).getResultList();
     }
-
-    private void btn_atletasActionPerformed(ActionEvent actionEvent) {
-        new Atletas();
-        setVisible(false);
-    }
-
-    private void btn_gerirPrActionPerformed(ActionEvent actionEvent) {
-        new Provas();
-        setVisible(false);
-    }
-
-    private void btn_gerirEvActionPerformed(ActionEvent actionEvent) {
-        new Eventos();
-        setVisible(false);
-    }
-
-    private void btn_exitActionPerformed(ActionEvent e){
-        System.exit(0);
-    }
-
-    private void createUIComponents() {
-        // TODO: place custom component creation code here
-    }
-
-
 }
 
