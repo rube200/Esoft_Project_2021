@@ -1,18 +1,19 @@
-import views.Main;
+package views;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 
-public class Modalidades extends JFrame{
+public class Provas extends JFrame{
     private JTextPane textPane1;
+    private JButton btn_insc;
+    private JButton btn_importar;
     private JButton btn_voltar;
-    private JButton btn_novo;
-    private JButton btn_hist;
     private JButton btn_detalhes;
-    private JPanel modalidades;
+    private JButton btn_novo;
+    private JPanel provas;
 
-    public Modalidades(){
-        setContentPane(modalidades);
+    public Provas(){
+        setContentPane(provas);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setVisible(true);
         pack();
@@ -21,7 +22,7 @@ public class Modalidades extends JFrame{
     }
 
     private void btn_voltarActionPerformed(ActionEvent actionEvent) {
-        new Main();
+        new WorldAthletics();
         setVisible(false);
     }
 }

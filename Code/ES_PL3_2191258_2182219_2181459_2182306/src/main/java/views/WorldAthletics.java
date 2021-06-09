@@ -3,7 +3,7 @@ package views;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 
-public class Main extends JFrame {
+public class WorldAthletics extends JFrame {
     private JPanel mainPanel;
     private JButton btn_atletas;
     private JButton btn_exit;
@@ -17,7 +17,12 @@ public class Main extends JFrame {
     private JButton btn_modalidades;
     private JButton btn_definicoes;
 
-    public Main() {
+    public void openView()
+    {
+        this.setVisible(true);
+    }
+
+    public WorldAthletics() {
         super("World Athletics");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setContentPane(mainPanel);
@@ -53,10 +58,6 @@ public class Main extends JFrame {
 
     private void btn_exitActionPerformed(ActionEvent e){
         System.exit(0);
-    }
-
-    public static void main (String[] args) {
-        new Main().setVisible(true);
     }
 
     private void createUIComponents() {

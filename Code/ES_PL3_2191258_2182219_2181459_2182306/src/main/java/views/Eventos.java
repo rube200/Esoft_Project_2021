@@ -1,4 +1,4 @@
-import views.Main;
+package views;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -22,7 +22,7 @@ public class Eventos extends JFrame{
     }
 
     private void btn_voltarActionPerformed(ActionEvent e) {
-        new Main();
+        new WorldAthletics();
         setVisible(false);
     }
 
