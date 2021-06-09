@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="World_Athletics" />
+        <module name="ES_PL3_2191258_2182219_2181459_2182306" />
       </profile>
     </annotationProcessing>
   </component>
