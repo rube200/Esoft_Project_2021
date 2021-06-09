@@ -18,6 +18,7 @@
         </constraints>
         <properties>
           <font name="Century Gothic" size="22" style="1"/>
+          <foreground color="-1"/>
           <text value="Eventos"/>
         </properties>
       </component>

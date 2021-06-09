@@ -22,9 +22,27 @@ public class Main extends JFrame {
         setContentPane(mainPanel);
         pack();
         setVisible(true);
-        
+
         btn_exit.addActionListener(this::btn_exitActionPerformed);
         btn_gerirEv.addActionListener(this::btn_gerirEvActionPerformed);
+        btn_gerirPr.addActionListener(this::btn_gerirPrActionPerformed);
+        btn_atletas.addActionListener(this::btn_atletasActionPerformed);
+        btn_modalidades.addActionListener(this::btn_modalidadesActionPerformed);
+    }
+
+    private void btn_modalidadesActionPerformed(ActionEvent actionEvent) {
+        new Modalidades();
+        setVisible(false);
+    }
+
+    private void btn_atletasActionPerformed(ActionEvent actionEvent) {
+        new Atletas();
+        setVisible(false);
+    }
+
+    private void btn_gerirPrActionPerformed(ActionEvent actionEvent) {
+        new Provas();
+        setVisible(false);
     }
 
     private void btn_gerirEvActionPerformed(ActionEvent actionEvent) {
