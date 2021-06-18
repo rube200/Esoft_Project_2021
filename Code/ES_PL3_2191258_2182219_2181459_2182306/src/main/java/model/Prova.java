@@ -2,29 +2,21 @@ package model;
 
 import API.Sexo;
 
-import javax.persistence.*;
-import java.util.Collection;
-
-@Entity
-@Table(name = "Provas")
 public class Prova {
-    @Id
-    @GeneratedValue
     private int id;
-    @JoinColumn(nullable = false)
-    @ManyToOne
-    private Evento evento;
-    @JoinColumn(nullable = false)
-    @ManyToOne
-    private Modalidade modalidade;
-    @Column(nullable = false)
-    private byte atletasPorProva;
-    @Column(nullable = false)
-    private short minimos;
-    @Column(nullable = false)
+    private int evento_id;
+    private int modalidade_id;
     private Sexo sexo;
-    @OneToMany
-    private Collection<Etapa> etapas;
-    @OneToMany
-    private Collection<Inscricao> inscricoes;
+    private int minimos;
+    private byte atletasPorProva;
+
+    public Prova() {
+
+    }
+
+    @Override
+    public String toString() {
+        //todo
+        return super.toString();
+    }
 }
