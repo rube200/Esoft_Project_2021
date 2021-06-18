@@ -22,7 +22,6 @@ public class Eventos extends JFrame{
     }
 
     private void btn_voltarActionPerformed(ActionEvent e) {
-        new WorldAthletics();
         setVisible(false);
     }
 

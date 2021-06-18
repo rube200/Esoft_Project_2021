@@ -23,7 +23,6 @@ public class Atletas extends JFrame{
     }
 
     private void btn_voltarActionPerformed(ActionEvent actionEvent) {
-        new WorldAthletics();
         setVisible(false);
     }
 }

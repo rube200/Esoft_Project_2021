@@ -21,7 +21,6 @@ public class Modalidades extends JFrame{
     }
 
     private void btn_voltarActionPerformed(ActionEvent actionEvent) {
-        new WorldAthletics();
         setVisible(false);
     }
 }
