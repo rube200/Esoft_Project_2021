@@ -21,7 +21,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
     @Inject
     public DatabaseQuery(Logger logger) {
-        connectionString = "jdbc:mariadb://localhost/esoft_projeto?user=root&password=12345";
+        connectionString = "jdbc:mariadb://localhost/esoft_projeto?createDatabaseIfNotExist=true&user=root&password=12345";
         this.logger = logger;
 
         checkSchema();
@@ -206,10 +206,10 @@ public class DatabaseQuery implements DatabaseConnector {
 
     private boolean createStatement(SqlConsumer<Statement> statementCallback)
     {
-        return createStatement(statementCallback, null, null);
+        return createStatement(statementCallback, null);
     }
 
-    private boolean createStatement(SqlConsumer<Statement> statementCallback, Consumer<SQLException> sqlExceptionCallback, Consumer<Exception> exceptionCallback)
+    private boolean createStatement(SqlConsumer<Statement> statementCallback, Consumer<Exception> exceptionCallback)
     {
         return getConnection(connection -> {
             try (Statement statement = connection.createStatement())
