@@ -1,14 +1,17 @@
 package views;
 
+import API.DatabaseConnector;
+import API.MainView;
 import com.google.inject.Inject;
 import model.Evento;
 import model.Prova;
 
-import javax.persistence.EntityManager;
 import javax.swing.*;
-import java.util.List;
+import java.util.Collection;
 
-public class WorldAthletics extends JFrame {
+public class WorldAthletics extends JFrame implements MainView {
+    private final DatabaseConnector databaseConnector;
+
     private JPanel mainPanel;
     private JList<Evento> listEventos;//setLayoutOrientation(JList.HORIZONTAL_WRAP);
     private final DefaultListModel<Evento> eventosListModel = new DefaultListModel<>();
@@ -26,10 +29,10 @@ public class WorldAthletics extends JFrame {
     private JButton buttonSair;
 
     @Inject
-    private EntityManager entityManager;
-
-    public WorldAthletics() {
+    WorldAthletics(DatabaseConnector databaseConnector) {
         super("World Athletics");
+        this.databaseConnector = databaseConnector;
+
         setContentPane(mainPanel);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -40,22 +43,19 @@ public class WorldAthletics extends JFrame {
         listProvas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 
-    public void prepareData() {
-        eventosListModel.addAll(queryAll(Evento.class));
-        provasListModel.addAll(queryAll(Prova.class));
+    @Override
+    public void prepareView() {
+        Collection<Evento> eventos = databaseConnector.getEventos();
+        eventosListModel.addAll(eventos);
+
+        Collection<Prova> provas = databaseConnector.getProvas();
+        provasListModel.addAll(provas);
     }
 
-    public void openView() {
+    @Override
+    public void displayView() {
         pack();
         this.setVisible(true);
-    }
-
-    private <X> List<X> queryAll(Class<X> entityClass) {
-
-        var builder = entityManager.getCriteriaBuilder();
-        var query = builder.createQuery(entityClass);
-        var allQUERY = query.select(query.from(entityClass));
-        return entityManager.createQuery(allQUERY).getResultList();
     }
 }
 

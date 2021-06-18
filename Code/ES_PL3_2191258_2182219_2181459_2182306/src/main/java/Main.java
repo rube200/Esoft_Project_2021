@@ -1,33 +1,34 @@
+import API.DatabaseConnector;
+import API.MainView;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.inject.spi.InjectionPoint;
+import controllers.DatabaseQuery;
 import views.WorldAthletics;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import javax.swing.*;
 
-public class Main extends AbstractModule {
+class Main extends AbstractModule {
     public static void main(String[] args) {
-        Injector injector = Guice.createInjector(new Main());
-        injector.getInstance(Main.class).start();
+        SwingUtilities.invokeLater(() -> {
+            Injector injector = Guice.createInjector(new Main());
+            injector.getInstance(Main.class).start();
+        });
     }
 
     @Override
     protected void configure() {
-        EntityManagerFactory factory = Persistence.createEntityManagerFactory("Esoft_Projeto");
-        EntityManager entityManager = factory.createEntityManager();
-        bind(EntityManager.class).toInstance(entityManager);
-
-        bind(WorldAthletics.class);
+        bind(DatabaseConnector.class).to(DatabaseQuery.class);
+        bind(MainView.class).to(WorldAthletics.class);
     }
 
     @Inject
-    WorldAthletics mainView;
+    MainView mainView;
 
     private void start() {
-        mainView.prepareData();
-        mainView.openView();
+        mainView.prepareView();
+        mainView.displayView();
     }
 }
