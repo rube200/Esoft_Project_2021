@@ -2,10 +2,7 @@ package model;
 
 import API.Sexo;
 
-import java.util.Date;
-
-public class Prova {
-    private int id;
+public class Prova extends UniqueId {
     private int eventoId;
     private int modalidadeId;
     private Sexo sexo;
@@ -13,7 +10,6 @@ public class Prova {
     private byte atletasPorProva;
 
     public Prova() {
-
     }
 
     public Prova(int eventoId, int modalidadeId, Sexo sexo, int minimos, byte atletasPorProva) {
