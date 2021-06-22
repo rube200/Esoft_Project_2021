@@ -1,16 +1,16 @@
 package controllers;
 
 import API.DatabaseConnector;
+import model.UniqueId;
 import com.google.inject.Inject;
 import model.Evento;
+import model.Modalidade;
 import model.Prova;
 
 import java.lang.reflect.Field;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.Date;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -20,12 +20,16 @@ public class DatabaseQuery implements DatabaseConnector {
     private final Logger logger;
 
     @Inject
+    private ViewController viewController;
+
+    @Inject
     public DatabaseQuery(Logger logger) {
         connectionString = "jdbc:mariadb://localhost/esoft_projeto?createDatabaseIfNotExist=true&user=root&password=12345";
         this.logger = logger;
 
         checkSchema();
     }
+
     private void checkSchema() {
         createStatement(statement -> {
             String query = "CREATE TABLE IF NOT EXISTS `eventos` (" +
@@ -46,7 +50,8 @@ public class DatabaseQuery implements DatabaseConnector {
             query = "CREATE TABLE IF NOT EXISTS `modalidades` (" +
                     "`Id` INT AUTO_INCREMENT, " +
                     "`Nome` VARCHAR(50) NOT NULL, " +
-                    "`Tipo_De_Contagem` ENUM('S','M') NOT NULL, " +
+                    "`Tipo_De_Contagem` ENUM('S', 'Min', 'M', 'Km') NOT NULL, " +
+                    "`Deleted_At` TIMESTAMP NULL DEFAULT NULL, " +
                     "PRIMARY KEY (`Id`), " +
                     "CONSTRAINT `Validate_Name` CHECK (`Nome` <> ''));";
             statement.execute(query);
@@ -65,7 +70,7 @@ public class DatabaseQuery implements DatabaseConnector {
                     "CONSTRAINT `Eventos_Provas` FOREIGN KEY (`Evento_Id`) REFERENCES `eventos` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Modalidades_Provas` FOREIGN KEY (`Modalidade_Id`) REFERENCES `modalidades` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Validate_Minimos` CHECK (`Minimos` > '0'), " +
-                    "CONSTRAINT `Validate_Atletas_Por_Prova` CHECK (`Atletas_Por_Provas` > '0'));";
+                    "CONSTRAINT `Validate_Atletas_Por_Prova` CHECK (`Atletas_Por_Provas` > '1'));";
             statement.execute(query);
 
             return true;
@@ -74,21 +79,34 @@ public class DatabaseQuery implements DatabaseConnector {
 
     @Override
     public Collection<Evento> getEventos() {
-        return getEventos(false);
+        return getEventos(false, true);
     }
+
     @Override
-    public Collection<Evento> getEventos(boolean decorrer) {
+    public Collection<Evento> getEventosAtuais() {
+        return getEventos(true, false);
+    }
+
+    @Override
+    public Collection<Evento> getEventoAtuaisOuFuturos() {
+        return getEventos(true, true);
+    }
+
+    private Collection<Evento> getEventos(boolean decorrer, boolean futuros) {
         //language=MariaDB
         String query = "SELECT * " +
                 "FROM `eventos` " +
                 "WHERE " + (decorrer ?
                 "`Inicio` <= UTC_DATE() AND " +
-                        "`Fim` >= UTC_DATE() AND " : "") +
+                        (!futuros ?
+                                "`Fim` >= UTC_DATE() AND "
+                                : "") : "") +
                 "`Deleted_At` IS NULL;";
 
 
         return getDataFromQuery(Evento.class, query);
     }
+
     @Override
     public boolean store(Evento evento) {
         //language=MariaDB
@@ -103,15 +121,26 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setString(4, evento.getPais());
             prepare.setString(5, evento.getLocal());
             return true;
-        }, result -> insertModelId(result, evento));
+        }, result -> insertModelId(result, evento), ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao guardar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
     }
 
     @Override
     public Collection<Prova> getProvas() {
         return getProvas(false);
     }
+
     @Override
-    public Collection<Prova> getProvas(boolean decorrer) {
+    public Collection<Prova> getProvasAtuais()  {
+        return getProvas(true);
+    }
+    private Collection<Prova> getProvas(boolean decorrer) {
         //language=MariaDB
         String query = "SELECT `provas`.* " +
                 "FROM `provas` " +
@@ -129,6 +158,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return getDataFromQuery(Prova.class, query);
     }
+
     @Override
     public boolean store(Prova prova) {
         //language=MariaDB
@@ -143,7 +173,45 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setInt(4, prova.getMinimos());
             prepare.setByte(5, prova.getAtletasPorProva());
             return true;
-        }, result -> insertModelId(result, prova));
+        }, result -> insertModelId(result, prova), ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao guardar prova! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    @Override
+    public Collection<Modalidade> getModalidades() {
+        //language=MariaDB
+        String query = "SELECT * " +
+                "FROM `modalidades` " +
+                "WHERE `Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Modalidade.class, query);
+    }
+
+    @Override
+    public boolean store(Modalidade modalidade) {
+        //language=MariaDB
+        String query = "INSERT INTO `modalidades` " +
+                "(`Nome`, `Tipo_De_Contagem`) " +
+                "VALUES (?, ?);";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setString(1, modalidade.getNome());
+            prepare.setString(2, modalidade.getTipoDeContagem().name());
+            return true;
+        }, result -> insertModelId(result, modalidade), ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao guardar modalidade! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
     }
 
     private <T> Collection<T> getDataFromQuery(Class<T> implementation, String sql) {
@@ -156,6 +224,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return success ? dataToReturn : null;
     }
+
     private <T> Collection<T> getDataFromResult(Class<T> implementation, ResultSet resultSet) throws ReflectiveOperationException, SQLException {
         ResultSetMetaData sqlMetaData = resultSet.getMetaData();
 
@@ -175,7 +244,7 @@ public class DatabaseQuery implements DatabaseConnector {
             sqlColNameOrig.put(lowerName, name);
         }
 
-        Field[] declaredFields = implementation.getDeclaredFields();
+        Collection<Field> declaredFields = getAllDeclaredFields(implementation);
         Map<String, Field> fieldsToFill = new HashMap<>();
 
         for (Field field : declaredFields) {
@@ -218,7 +287,9 @@ public class DatabaseQuery implements DatabaseConnector {
                     if (fieldType == API.Genero.class) {
                         value = API.Genero.valueOf(value.toString());//String.valueOf(Object obj) => obj != null ? obj.toString() ...
                     } else if (fieldType == API.Sexo.class) {
-                        value = API.Sexo.valueOf(value.toString());//String.valueOf(Object obj) => obj != null ? obj.toString() ...
+                        value = API.Sexo.valueOf(value.toString());
+                    } else if (fieldType == API.TipoDeContagem.class) {
+                        value = API.TipoDeContagem.valueOf(value.toString());
                     } else {
                         throw new IllegalArgumentException("Unknown Enum type: " + fieldType);
                     }
@@ -231,6 +302,16 @@ public class DatabaseQuery implements DatabaseConnector {
         }
 
         return data;
+    }
+
+    private Collection<Field> getAllDeclaredFields(Class<?> implementation) {
+        Collection<Field> declaredFields = new LinkedList<>(Arrays.asList(implementation.getDeclaredFields()));
+        Class<?> parentClass = implementation.getSuperclass();
+
+        if (parentClass != null)
+            declaredFields.addAll(getAllDeclaredFields(parentClass));
+
+        return declaredFields;
     }
     private String convertSqlNamingToJava(String originalName) {
         boolean capitalizeNext = false;
@@ -253,27 +334,18 @@ public class DatabaseQuery implements DatabaseConnector {
         return stringBuilder.toString();
     }
 
-    private boolean insertModelId(ResultSet result, Object obj) throws IllegalAccessException, SQLException {
+    private boolean insertModelId(ResultSet result, UniqueId uniqueIdObj) throws SQLException {
         if (!result.next())
             return false;
 
-        Field[] declaredFields = obj.getClass().getDeclaredFields();
-        for (Field field : declaredFields) {
-            String fieldName = field.getName().toLowerCase();
-            if (!fieldName.equals("id"))
-                continue;
-
-            field.setAccessible(true);
-            field.set(obj, result.getInt(1));
-            return true;
-        }
-
+        uniqueIdObj.setId(result.getInt(1));
         return true;
     }
 
     private boolean createStatement(SqlExecute<Statement> statementCallback) {
         return createStatement(statementCallback, null);
     }
+
     private boolean createStatement(SqlExecute<Statement> statementCallback, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (Statement statement = connection.createStatement()) {
@@ -281,9 +353,11 @@ public class DatabaseQuery implements DatabaseConnector {
             }
         }, exceptionCallback);
     }
+
     private boolean executeQuery(String sql, SqlExecute<ResultSet> result) {
         return executeQuery(sql, null, result, null);
     }
+
     private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -300,6 +374,7 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result) {
         return executeUpdate(sql, preparedQuery, result, null);
     }
+
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {

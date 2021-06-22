@@ -54,6 +54,10 @@ public class ViewController {
         frame.setVisible(true);
     }
 
+    public void mostrarAviso(String mensagem) {
+        JOptionPane.showMessageDialog(mainWindow, mensagem, "Aviso", JOptionPane.WARNING_MESSAGE);
+    }
+
     void onBackRequested() {
         displayView(worldAthleticsView);
     }
