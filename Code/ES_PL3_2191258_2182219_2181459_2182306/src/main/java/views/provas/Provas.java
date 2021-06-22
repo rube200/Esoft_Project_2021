@@ -1,8 +1,11 @@
 package views.provas;
 
+import API.CrudController;
 import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import model.Modalidade;
 import model.Prova;
 
 import javax.swing.*;
@@ -10,20 +13,23 @@ import java.awt.*;
 import java.util.Collection;
 
 public class Provas extends JFrame implements ViewBase {
-    private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
     private JPanel mainPanel;
+
     private JList<Prova> listProvas;
+    private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
+
     private JButton buttonNovaProva;
     private JButton buttonInscreverAtleta;
     private JButton buttonDetalhesProva;
     private JButton buttonImportarProvas;
     private JButton buttonVoltar;
+
     @Inject
-    private DatabaseConnector databaseConnector;
+    @Named("ProvasController")
+    private CrudController<Prova> provasController;
 
     public Provas() {
-        //todo
-        //setupButtons();
+        setupButtons();
         setupList();
     }
 
@@ -31,6 +37,9 @@ public class Provas extends JFrame implements ViewBase {
     public Container getViewContainer() {
         return mainPanel;
     }
+
+    @Inject
+    private DatabaseConnector databaseConnector;
 
     @Override
     public boolean prepareView() {
@@ -46,6 +55,10 @@ public class Provas extends JFrame implements ViewBase {
     @Override
     public void setupBackButton(Runnable buttonBackCallback) {
         buttonVoltar.addActionListener(e -> buttonBackCallback.run());
+    }
+
+    private void setupButtons() {
+        buttonNovaProva.addActionListener(e -> provasController.create());
     }
 
     private void setupList() {

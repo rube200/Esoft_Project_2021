@@ -5,7 +5,9 @@ import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import controllers.EventosController;
 import model.Evento;
+import model.Modalidade;
 import model.Prova;
 
 import javax.swing.*;
@@ -33,6 +35,9 @@ public class WorldAthletics extends JFrame implements ViewBase {
     @Named("EventosController")
     private CrudController<Evento> eventosController;
     @Inject
+    @Named("ModalidadesController")
+    private CrudController<Modalidade> modalidadesController;
+    @Inject
     @Named("ProvasController")
     private CrudController<Prova> provasController;
 
@@ -49,13 +54,13 @@ public class WorldAthletics extends JFrame implements ViewBase {
 
     @Override
     public boolean prepareView() {
-        Collection<Evento> eventos = databaseConnector.getEventos(true);
+        Collection<Evento> eventos = databaseConnector.getEventosAtuais();
         if (eventos == null)
             return false;
         eventosListModel.clear();
         eventosListModel.addAll(eventos);
 
-        Collection<Prova> provas = databaseConnector.getProvas(true);
+        Collection<Prova> provas = databaseConnector.getProvasAtuais();
         if (provas == null)
             return false;
         provasListModel.clear();
@@ -72,6 +77,7 @@ public class WorldAthletics extends JFrame implements ViewBase {
     private void setupButtons() {
         buttonGerirEventos.addActionListener(e -> eventosController.index());
         buttonGerirProvas.addActionListener(e -> provasController.index());
+        buttonModalidades.addActionListener(e -> modalidadesController.index());
     }
 
     private void setupLists() {

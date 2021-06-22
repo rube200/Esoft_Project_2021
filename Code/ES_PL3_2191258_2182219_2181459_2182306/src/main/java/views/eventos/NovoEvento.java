@@ -23,7 +23,6 @@ public class NovoEvento extends JFrame {
     private JTextField inputLocal;
     private JButton buttonGuardar;
     private JButton buttonCancelar;
-    private JTextField a;
 
     public NovoEvento(CrudController<Evento> controller) {
         super(TITLE);
@@ -40,31 +39,31 @@ public class NovoEvento extends JFrame {
         buttonGuardar.addActionListener(e -> {
             String nome = inputNome.getText();
             if (nome.length() == 0) {
-                //todo invalid name
+                controller.mostrarAviso("Introduza o nome do Evento!");
                 return;
             }
 
             Date inicio = (Date) inputInicio.getValue();
             if (inicio == null) {
-                //todo invalid inicio
+                controller.mostrarAviso("Data de inicio inválida!");
                 return;
             }
 
             Date fim = (Date) inputFim.getValue();
             if (fim == null) {
-                //todo invalid inicio
+                controller.mostrarAviso("Data de fim inválida!");
                 return;
             }
 
             String pais = inputPais.getText();
             if (pais.length() == 0) {
-                //todo invalid pais
+                controller.mostrarAviso("Introduza o Pais do Evento!");
                 return;
             }
 
             String local = inputLocal.getText();
             if (local.length() == 0) {
-                //todo invalid local
+                controller.mostrarAviso("Introduza o Local do  Evento!");
                 return;
             }
 
