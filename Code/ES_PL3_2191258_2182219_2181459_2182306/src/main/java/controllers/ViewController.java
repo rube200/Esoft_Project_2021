@@ -18,6 +18,7 @@ public class ViewController {
 
     public void initiateProgram() {
         worldAthleticsView.setupBackButton(() -> {
+            //todo
             mainWindow.dispose();
             System.exit(0);
         });

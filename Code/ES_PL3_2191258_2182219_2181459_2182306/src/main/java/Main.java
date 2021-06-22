@@ -10,7 +10,7 @@ import controllers.ViewController;
 import model.Evento;
 import model.Prova;
 import views.MainFrame;
-import views.Provas;
+import views.provas.Provas;
 import views.WorldAthletics;
 import views.eventos.Eventos;
 

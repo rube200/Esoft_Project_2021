@@ -1,4 +1,4 @@
-package views;
+package views.provas;
 
 import API.DatabaseConnector;
 import API.ViewBase;
@@ -22,6 +22,7 @@ public class Provas extends JFrame implements ViewBase {
     private DatabaseConnector databaseConnector;
 
     public Provas() {
+        //todo
         //setupButtons();
         setupList();
     }

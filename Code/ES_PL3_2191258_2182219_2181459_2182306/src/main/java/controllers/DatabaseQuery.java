@@ -90,6 +90,23 @@ public class DatabaseQuery implements DatabaseConnector {
         return getDataFromQuery(Evento.class, query);
     }
     @Override
+    public boolean store(Evento evento) {
+        //language=MariaDB
+        String query = "INSERT INTO `eventos` " +
+                "(`Nome`, `Inicio`, `Fim`, `Pais`, `Local`) " +
+                "VALUES (?, ?, ?, ?, ?);";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setString(1, evento.getNome());
+            prepare.setDate(2, new Date(evento.getInicioTime()));
+            prepare.setDate(3, new Date(evento.getFimTime()));
+            prepare.setString(4, evento.getPais());
+            prepare.setString(5, evento.getLocal());
+            return true;
+        }, result -> insertModelId(result, evento));
+    }
+
+    @Override
     public Collection<Prova> getProvas() {
         return getProvas(false);
     }
@@ -112,6 +129,23 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return getDataFromQuery(Prova.class, query);
     }
+    @Override
+    public boolean store(Prova prova) {
+        //language=MariaDB
+        String query = "INSERT INTO `provas` " +
+                "(`Evento_Id`, `Modalidade_Id`, `Sexo`, `Minimos`, `Atletas_Por_Provas`) " +
+                "VALUES (?, ?, ?, ?, ?);";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, prova.getEventoId());
+            prepare.setInt(2, prova.getModalidadeId());
+            prepare.setString(3, prova.getSexo().name());
+            prepare.setInt(4, prova.getMinimos());
+            prepare.setByte(5, prova.getAtletasPorProva());
+            return true;
+        }, result -> insertModelId(result, prova));
+    }
+
     private <T> Collection<T> getDataFromQuery(Class<T> implementation, String sql) {
         Collection<T> dataToReturn = new ArrayList<>();
         boolean success = executeQuery(sql, result -> {
@@ -219,38 +253,6 @@ public class DatabaseQuery implements DatabaseConnector {
         return stringBuilder.toString();
     }
 
-    @Override
-    public boolean store(Evento evento) {
-        //language=MariaDB
-        String query = "INSERT INTO `eventos` " +
-                "(`Nome`, `Inicio`, `Fim`, `Pais`, `Local`) " +
-                "VALUES (?, ?, ?, ?, ?);";
-
-        return executeUpdate(query, prepare -> {
-            prepare.setString(1, evento.getNome());
-            prepare.setDate(2, new Date(evento.getInicioTime()));
-            prepare.setDate(3, new Date(evento.getFimTime()));
-            prepare.setString(4, evento.getPais());
-            prepare.setString(5, evento.getLocal());
-            return true;
-        }, result -> insertModelId(result, evento));
-    }
-    @Override
-    public boolean store(Prova prova) {
-        //language=MariaDB
-        String query = "INSERT INTO `provas` " +
-                "(`Evento_Id`, `Modalidade_Id`, `Sexo`, `Minimos`, `Atletas_Por_Provas`) " +
-                "VALUES (?, ?, ?, ?, ?);";
-
-        return executeUpdate(query, prepare -> {
-            prepare.setInt(1, prova.getEventoId());
-            prepare.setInt(2, prova.getModalidadeId());
-            prepare.setString(3, prova.getSexo().name());
-            prepare.setInt(4, prova.getMinimos());
-            prepare.setByte(5, prova.getAtletasPorProva());
-            return true;
-        }, result -> insertModelId(result, prova));
-    }
     private boolean insertModelId(ResultSet result, Object obj) throws IllegalAccessException, SQLException {
         if (!result.next())
             return false;
@@ -335,15 +337,5 @@ public class DatabaseQuery implements DatabaseConnector {
          * @return deverá retornar verdadeiro(true) se a operação foi concluida com sucesso, senão falso(false) | se retornar falso(false) a execução de operações deverá parar
          */
         boolean invoke(T action) throws ReflectiveOperationException, SQLException;
-    }
-    @FunctionalInterface
-    private interface SqlUpdate<T> {
-        /**
-         * Executa esta operação no argumento fornecido.
-         *
-         * @param action ação a ser executada
-         * @return deverá retornar o número de colunas afetadas ou -1 em caso de erro
-         */
-        int invoke(T action) throws ReflectiveOperationException, SQLException;
     }
 }
