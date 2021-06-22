@@ -3,16 +3,14 @@ import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.*;
 import com.google.inject.name.Names;
-import controllers.DatabaseQuery;
-import controllers.EventosController;
-import controllers.ProvasController;
-import controllers.ViewController;
+import com.google.inject.util.Types;
+import controllers.*;
 import model.Evento;
-import model.Prova;
 import views.MainFrame;
-import views.provas.Provas;
 import views.WorldAthletics;
 import views.eventos.Eventos;
+import views.modalidades.Modalidades;
+import views.provas.Provas;
 
 import javax.swing.*;
 
@@ -27,19 +25,29 @@ class Main extends AbstractModule {
 
     @Override
     protected void configure() {
-        //bind controllers
         bind(DatabaseConnector.class).to(DatabaseQuery.class);
-        bind(new TypeLiteral<CrudController<Evento>>() {
-        }).annotatedWith(Names.named("EventosController")).to(EventosController.class);
-        bind(new TypeLiteral<CrudController<Prova>>() {
-        }).annotatedWith(Names.named("ProvasController")).to(ProvasController.class);
+        bind(JFrame.class).to(MainFrame.class);
+        bindView(WorldAthletics.class);
         bind(ViewController.class);
 
-        //bind views
-        bind(JFrame.class).to(MainFrame.class);
-        bind(ViewBase.class).annotatedWith(Names.named("EventosView")).to(Eventos.class);
-        bind(ViewBase.class).annotatedWith(Names.named("ProvasView")).to(Provas.class);
-        bind(ViewBase.class).annotatedWith(Names.named("WorldAthleticsView")).to(WorldAthletics.class);
+        bindCrudController(new TypeLiteral<>() {
+        }, EventosController.class, Eventos.class);
+        bindCrudController(new TypeLiteral<>() {
+        }, ModalidadesController.class, Modalidades.class);
+        bindCrudController(new TypeLiteral<>() {
+        }, ProvasController.class, Provas.class);
+
+        /*bindCrudController(ModalidadesController.class, Modalidades.class);
+        bindCrudController(ProvasController.class, Provas.class);*/
+    }
+
+    private <T> void bindCrudController(TypeLiteral<CrudController<T>> typeLiteral, Class<? extends CrudController<T>> controller, Class<? extends ViewBase> view) {
+        bind(typeLiteral).annotatedWith(Names.named(controller.getSimpleName())).to(controller);
+        bindView(view);
+    }
+
+    private void bindView(Class<? extends ViewBase> view) {
+        bind(ViewBase.class).annotatedWith(Names.named(view.getSimpleName() + "View")).to(view);
     }
 
     private void start() {
