@@ -1,3 +1,39 @@
+CREATE DATABASE IF NOT EXISTS `esoft_projeto`;
+USE `esoft_projeto`;
+
+CREATE TABLE IF NOT EXISTS `eventos` (
+  `Id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `Nome` varchar(50) NOT NULL,
+  `Inicio` date NOT NULL,
+  `Fim` date NOT NULL,
+  `Pais` varchar(75) NOT NULL,
+  `Local` varchar(75) NOT NULL,
+  `Deleted_At` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`Id`)
+);
+
+CREATE TABLE IF NOT EXISTS `modalidades` (
+  `Id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `Nome` varchar(50) NOT NULL,
+  `Tipo_De_Contagem` enum('S','M') NOT NULL,
+  PRIMARY KEY (`Id`)
+);
+
+CREATE TABLE IF NOT EXISTS `provas` (
+  `Id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `Id_Evento` int(10) unsigned NOT NULL,
+  `Id_Modalidade` int(10) unsigned NOT NULL,
+  `Sexo` enum('M','F','X') NOT NULL,
+  `Minimos` smallint(5) unsigned NOT NULL,
+  `Atletas_Por_Provas` tinyint(1) unsigned NOT NULL DEFAULT 8,
+  `Delete_At` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `Eventos_Provas` (`Id_Evento`),
+  KEY `Modalidades_Provas` (`Id_Modalidade`),
+  CONSTRAINT `Eventos_Provas` FOREIGN KEY (`Id_Evento`) REFERENCES `eventos` (`Id`) ON UPDATE CASCADE,
+  CONSTRAINT `Modalidades_Provas` FOREIGN KEY (`Id_Modalidade`) REFERENCES `modalidades` (`Id`) ON UPDATE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS `etapas` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `Id_Prova` int(10) unsigned DEFAULT NULL,
