@@ -6,17 +6,19 @@ import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import model.Modalidade;
+import views.model.ModelCrud;
+import views.model.ModelListRender;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Collection;
 
 public class Modalidades extends JFrame implements ViewBase {
+    private final DefaultListModel<ModelCrud<Modalidade>> modalidadesListModel = new DefaultListModel<>();
     private JPanel mainPanel;
-
-    private JList<Modalidade> listModalidades;
-    private final DefaultListModel<Modalidade> modalidadesListModel = new DefaultListModel<>();
-
+    private JList<ModelCrud<Modalidade>> listModalidades;
     private JButton buttonVoltar;
     private JButton buttonNovaModalidade;
     private JButton btn_hist;
@@ -25,8 +27,10 @@ public class Modalidades extends JFrame implements ViewBase {
     @Inject
     @Named("ModalidadesController")
     private CrudController<Modalidade> modalidadesController;
+    @Inject
+    private DatabaseConnector databaseConnector;
 
-    public Modalidades(){
+    public Modalidades() {
         setupButtons();
         setupList();
     }
@@ -36,16 +40,16 @@ public class Modalidades extends JFrame implements ViewBase {
         return mainPanel;
     }
 
-    @Inject
-    private DatabaseConnector databaseConnector;
-
     @Override
     public boolean prepareView() {
         Collection<Modalidade> modalidades = databaseConnector.getModalidades();
         if (modalidades == null)
             return false;
         modalidadesListModel.clear();
-        modalidadesListModel.addAll(modalidades);
+        for (Modalidade modalidade : modalidades) {
+            ModelCrud<Modalidade> listRow = new ModelCrud<>(modalidade, () -> modalidadesController.edit(modalidade), () -> modalidadesController.destroy(modalidade));
+            modalidadesListModel.addElement(listRow);
+        }
 
         return true;
     }
@@ -60,7 +64,19 @@ public class Modalidades extends JFrame implements ViewBase {
     }
 
     private void setupList() {
+        listModalidades.setCellRenderer(new ModelListRender<>());
         listModalidades.setModel(modalidadesListModel);
         listModalidades.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listModalidades.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = listModalidades.locationToIndex(e.getPoint());
+                ModelCrud<Modalidade> model = listModalidades.getModel().getElementAt(index);
+                if (model == null)
+                    return;
+
+                model.onModelPress(e.getX());
+            }
+        });
     }
 }

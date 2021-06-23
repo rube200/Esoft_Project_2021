@@ -7,7 +7,9 @@ import javax.swing.*;
 import javax.swing.text.DateFormatter;
 import javax.swing.text.DefaultFormatter;
 import javax.swing.text.DefaultFormatterFactory;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -23,6 +25,8 @@ public class NovoEditarEvento extends JDialog {
     private JTextField inputLocal;
     private JButton buttonGuardar;
     private JButton buttonCancelar;
+    private int eventoId;
+    private Evento evento;
 
     public NovoEditarEvento(CrudController<Evento> controller) {
         setContentPane(mainPanel);
@@ -44,7 +48,6 @@ public class NovoEditarEvento extends JDialog {
         setupDateInputs();
     }
 
-    private int eventoId;
     public NovoEditarEvento(CrudController<Evento> controller, Evento evento) {
         this(controller);
         eventoId = evento.getId();
@@ -78,7 +81,6 @@ public class NovoEditarEvento extends JDialog {
         dispose();
     }
 
-    private Evento evento;
     private void onGuardar(CrudController<Evento> controller) {
         String nome = inputNome.getText();
         if (nome.length() == 0) {
@@ -111,10 +113,12 @@ public class NovoEditarEvento extends JDialog {
         }
 
         evento = new Evento(nome, inicio, fim, pais, local);
-        if (eventoId > 0)
+        if (eventoId > 0) {
             evento.setId(eventoId);
+            controller.update(evento);
+        } else
+            controller.store(evento);
 
-        controller.store(evento);
         dispose();
     }
 

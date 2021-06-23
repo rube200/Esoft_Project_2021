@@ -5,7 +5,6 @@ import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import controllers.EventosController;
 import model.Evento;
 import model.Modalidade;
 import model.Prova;

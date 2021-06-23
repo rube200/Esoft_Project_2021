@@ -15,6 +15,8 @@ public class NovaEditarModalidade extends JDialog {
     private JComboBox<TipoDeContagem> inputTipo;
     private JButton buttonGuardar;
     private JButton buttonCancelar;
+    private int modalidadeId;
+    private Modalidade modalidade;
 
     public NovaEditarModalidade(CrudController<Modalidade> controller) {
         setContentPane(mainPanel);
@@ -37,7 +39,6 @@ public class NovaEditarModalidade extends JDialog {
         setupCombo();
     }
 
-    private int modalidadeId;
     public NovaEditarModalidade(CrudController<Modalidade> controller, Modalidade modalidade) {
         this(controller);
         modalidadeId = modalidade.getId();
@@ -64,7 +65,6 @@ public class NovaEditarModalidade extends JDialog {
         dispose();
     }
 
-    private Modalidade modalidade;
     private void onGuardar(CrudController<Modalidade> controller) {
         String nome = inputNome.getText();
         if (nome.length() == 0) {
@@ -75,10 +75,12 @@ public class NovaEditarModalidade extends JDialog {
         TipoDeContagem tipo = (TipoDeContagem) inputTipo.getSelectedItem();
         modalidade = new Modalidade(nome, tipo);
 
-        if (modalidadeId > 0)
+        if (modalidadeId > 0) {
             modalidade.setId(modalidadeId);
+            controller.update(modalidade);
+        } else
+            controller.store(modalidade);
 
-        controller.store(modalidade);
         dispose();
     }
 

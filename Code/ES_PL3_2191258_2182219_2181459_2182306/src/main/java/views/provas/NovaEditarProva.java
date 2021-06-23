@@ -24,9 +24,8 @@ public class NovaEditarProva extends JDialog {
     private static final int NOVO_EVENTO_ID = -1;
     private static final int NOVA_MODALIDADE_ID = -2;
     private static final DateFormat DEFAULT_DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
-
+    private final ProvasController controller;
     private JPanel mainPanel;
-
     //todo verify date and hora
     private JComboBox<Evento> inputEvento;
     private JComboBox<Modalidade> inputModalidade;
@@ -38,8 +37,10 @@ public class NovaEditarProva extends JDialog {
     private JFormattedTextField inputMinimos;
     private JButton buttonGuardar;
     private JButton buttonCancelar;
+    private int provaId;
+    private Object lastComboItem;
+    private Prova prova;
 
-    private final ProvasController controller;
     public NovaEditarProva(ProvasController controller, Collection<Evento> eventos, Collection<Modalidade> modalidades) {
         this.controller = controller;
 
@@ -62,7 +63,6 @@ public class NovaEditarProva extends JDialog {
         setupInputs(eventos, modalidades);
     }
 
-    private int provaId;
     public NovaEditarProva(ProvasController controller, Collection<Evento> eventos, Collection<Modalidade> modalidades, Prova prova) {
         this(controller, eventos, modalidades);
         this.provaId = prova.getId();
@@ -120,7 +120,6 @@ public class NovaEditarProva extends JDialog {
         inputHora.setValue(new Date());*/
     }
 
-    private Object lastComboItem;
     private void onComboChange(ItemEvent item) {
         int state = item.getStateChange();
         if (state == ItemEvent.DESELECTED) {
@@ -192,7 +191,6 @@ public class NovaEditarProva extends JDialog {
         dispose();
     }
 
-    private Prova prova;
     private void onGuardar(CrudController<Prova> controller) {
         Evento evento = (Evento) inputEvento.getSelectedItem();
         if (evento == null || evento.getId() < 0) {
@@ -213,19 +211,19 @@ public class NovaEditarProva extends JDialog {
         }
 
         Sexo sexo = (Sexo) inputSexo.getSelectedItem();
-        int minimos = (int)inputMinimos.getValue();
+        int minimos = (int) inputMinimos.getValue();
         if (minimos <= 0) {
             controller.mostrarAviso("Introduza um mínimo de acesso válido: " + minimos);
             return;
         }
 
-        byte atletasPorRonda = (byte)(int)inputAtletasPorRonda.getValue();
+        byte atletasPorRonda = (byte) (int) inputAtletasPorRonda.getValue();
         prova = new Prova(evento.getId(), modalidade.getId(), sexo, minimos, atletasPorRonda);
-
-        if (provaId > 0)
+        if (provaId > 0) {
             prova.setId(provaId);
-
-        controller.store(prova);
+            controller.update(prova);
+        } else
+            controller.store(prova);
         dispose();
     }
 
@@ -243,6 +241,7 @@ public class NovaEditarProva extends JDialog {
             return getNome();
         }
     }
+
     private static class NovaModalidadeModel extends Modalidade {
         private NovaModalidadeModel() {
             super(NOVA_MODALIDADE_ID, "Adicionar nova Modalidade");
