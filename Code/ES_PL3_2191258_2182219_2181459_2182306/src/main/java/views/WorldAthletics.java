@@ -13,7 +13,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Collection;
 
-public class WorldAthletics extends JFrame implements ViewBase {
+public class WorldAthletics implements ViewBase {
     private final DefaultListModel<Evento> eventosListModel = new DefaultListModel<>();
     private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
     private JPanel mainPanel;

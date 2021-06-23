@@ -15,7 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collection;
 
-public class Provas extends JFrame implements ViewBase {
+public class Provas implements ViewBase {
     private final DefaultListModel<ModelCrud<Prova>> provasListModel = new DefaultListModel<>();
     private JPanel mainPanel;
     private JList<ModelCrud<Prova>> listProvas;

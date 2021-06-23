@@ -15,7 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collection;
 
-public class Eventos extends JFrame implements ViewBase {
+public class Eventos implements ViewBase {
     private final DefaultListModel<ModelCrud<Evento>> eventosListModel = new DefaultListModel<>();
     private JPanel mainPanel;
     private JList<ModelCrud<Evento>> listEventos;

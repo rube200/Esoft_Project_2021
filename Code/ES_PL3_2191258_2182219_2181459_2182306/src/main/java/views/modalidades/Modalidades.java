@@ -15,7 +15,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collection;
 
-public class Modalidades extends JFrame implements ViewBase {
+public class Modalidades implements ViewBase {
     private final DefaultListModel<ModelCrud<Modalidade>> modalidadesListModel = new DefaultListModel<>();
     private JPanel mainPanel;
     private JList<ModelCrud<Modalidade>> listModalidades;
