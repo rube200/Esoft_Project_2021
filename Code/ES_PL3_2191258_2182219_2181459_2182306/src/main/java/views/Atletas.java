@@ -3,7 +3,7 @@ package views;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 
-public class Atletas extends JFrame{
+public class Atletas extends JFrame {
     private JTextPane textPane1;
     private JButton btn_hist;
     private JButton btn_importar;
@@ -13,7 +13,7 @@ public class Atletas extends JFrame{
     private JPanel atletas;
     private JButton btn_insc;
 
-    public Atletas(){
+    public Atletas() {
         setContentPane(atletas);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setVisible(true);

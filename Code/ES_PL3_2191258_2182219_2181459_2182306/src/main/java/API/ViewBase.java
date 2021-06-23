@@ -1,7 +1,11 @@
 package API;
 
-public interface ViewBase {
-    void prepareView();
+import java.awt.*;
 
-    void displayView();
+public interface ViewBase {
+    Container getViewContainer();
+
+    boolean prepareView();
+
+    void setupBackButton(Runnable buttonBackCallback);
 }
