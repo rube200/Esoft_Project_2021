@@ -1,15 +1,15 @@
 package controllers;
 
 import API.DatabaseConnector;
-import model.UniqueId;
 import com.google.inject.Inject;
 import model.Evento;
 import model.Modalidade;
 import model.Prova;
+import model.UniqueId;
 
 import java.lang.reflect.Field;
-import java.sql.*;
 import java.sql.Date;
+import java.sql.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -78,6 +78,26 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     @Override
+    public boolean delete(Evento evento) {
+        //language=MariaDB
+        String query = "UPDATE `eventos` " +
+                "SET `Deleted_At` = NOW() " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, evento.getId());
+            return true;
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    @Override
     public Collection<Evento> getEventos() {
         return getEventos(false, true);
     }
@@ -121,8 +141,8 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setString(4, evento.getPais());
             prepare.setString(5, evento.getLocal());
             return true;
-        }, result -> insertModelId(result, evento), ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, result -> insertModelId(result, evento), ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao guardar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
@@ -130,6 +150,7 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+
     @Override
     public boolean update(Evento evento) {
         //language=MariaDB
@@ -149,9 +170,29 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setString(5, evento.getLocal());
             prepare.setInt(6, evento.getId());
             return true;
-        }, ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    @Override
+    public boolean delete(Prova prova) {
+        //language=MariaDB
+        String query = "UPDATE `provas` " +
+                "SET `Deleted_At` = NOW() " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, prova.getId());
+            return true;
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao apagar prova! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
 
@@ -165,23 +206,29 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     @Override
-    public Collection<Prova> getProvasAtuais()  {
+    public Collection<Prova> getProvasAtuais() {
         return getProvas(true);
     }
+
     private Collection<Prova> getProvas(boolean decorrer) {
         //language=MariaDB
         String query = "SELECT `provas`.* " +
                 "FROM `provas` " +
-                (decorrer ?
-                        "INNER JOIN ( " +
-                                "SELECT `Id` " +
-                                "FROM `eventos` " +
-                                "WHERE " +
-                                "`Inicio` <= UTC_DATE() AND " +
-                                "`Fim` >= UTC_DATE() AND " +
-                                "`Deleted_At` IS NULL" +
-                                ") `eventos` " +
-                                "ON `eventos`.`Id` = `provas`.`Evento_Id` " : "") +
+                "INNER JOIN (" +
+                "SELECT `Id` " +
+                "FROM `eventos` " +
+                "WHERE " + (decorrer ?
+                "`Inicio` <= UTC_DATE() AND " +
+                        "`Fim` >= UTC_DATE() AND " : "") +
+                "`Deleted_At` IS NULL" +
+                ") `eventos` " +
+                "ON `eventos`.`Id` = `provas`.`Evento_Id` " +
+                "INNER JOIN (" +
+                "SELECT `Id` " +
+                "FROM `modalidades` " +
+                "WHERE `Deleted_At` IS NULL" +
+                ") `modalidades` " +
+                "ON `modalidades`.`Id` = `provas`.`Modalidade_Id` " +
                 "WHERE `Deleted_At` IS NULL;";
 
         return getDataFromQuery(Prova.class, query);
@@ -201,8 +248,8 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setInt(4, prova.getMinimos());
             prepare.setByte(5, prova.getAtletasPorProva());
             return true;
-        }, result -> insertModelId(result, prova), ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, result -> insertModelId(result, prova), ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao guardar prova! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
@@ -210,6 +257,7 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+
     @Override
     public boolean update(Prova prova) {
         //language=MariaDB
@@ -229,9 +277,29 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setByte(5, prova.getAtletasPorProva());
             prepare.setInt(6, prova.getId());
             return true;
-        }, ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    @Override
+    public boolean delete(Modalidade modalidade) {
+        //language=MariaDB
+        String query = "UPDATE `modalidades` " +
+                "SET `Deleted_At` = NOW() " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, modalidade.getId());
+            return true;
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao apagar modalidade! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
 
@@ -260,8 +328,8 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setString(1, modalidade.getNome());
             prepare.setString(2, modalidade.getTipoDeContagem().name());
             return true;
-        }, result -> insertModelId(result, modalidade), ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, result -> insertModelId(result, modalidade), ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao guardar modalidade! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
@@ -269,6 +337,7 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+
     @Override
     public boolean update(Modalidade modalidade) {
         //language=MariaDB
@@ -282,8 +351,8 @@ public class DatabaseQuery implements DatabaseConnector {
             prepare.setString(2, modalidade.getTipoDeContagem().name());
             prepare.setInt(6, modalidade.getId());
             return true;
-        }, ex ->{
-            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
                 viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
@@ -302,6 +371,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return success ? dataToReturn : null;
     }
+
     private <T> Collection<T> getDataFromResult(Class<T> implementation, ResultSet resultSet) throws ReflectiveOperationException, SQLException {
         ResultSetMetaData sqlMetaData = resultSet.getMetaData();
 
@@ -380,6 +450,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return data;
     }
+
     private Collection<Field> getAllDeclaredFields(Class<?> implementation) {
         Collection<Field> declaredFields = new LinkedList<>(Arrays.asList(implementation.getDeclaredFields()));
         Class<?> parentClass = implementation.getSuperclass();
@@ -389,6 +460,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return declaredFields;
     }
+
     private String convertSqlNamingToJava(String originalName) {
         boolean capitalizeNext = false;
         StringBuilder stringBuilder = new StringBuilder(originalName);
@@ -409,6 +481,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return stringBuilder.toString();
     }
+
     private boolean insertModelId(ResultSet result, UniqueId uniqueIdObj) throws SQLException {
         if (!result.next())
             return false;
@@ -420,6 +493,7 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean createStatement(SqlExecute<Statement> statementCallback) {
         return createStatement(statementCallback, null);
     }
+
     private boolean createStatement(SqlExecute<Statement> statementCallback, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (Statement statement = connection.createStatement()) {
@@ -431,6 +505,7 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean executeQuery(String sql, SqlExecute<ResultSet> result) {
         return executeQuery(sql, null, result, null);
     }
+
     private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -447,6 +522,7 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, Consumer<Exception> exceptionCallback) {
         return executeUpdate(sql, preparedQuery, null, exceptionCallback);
     }
+
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -456,12 +532,16 @@ public class DatabaseQuery implements DatabaseConnector {
                 if (preparedStatement.executeUpdate() == 0)
                     return false;
 
+                if (result == null)
+                    return true;
+
                 try (ResultSet resultSet = preparedStatement.getGeneratedKeys()) {
                     return result.invoke(resultSet);
                 }
             }
         }, exceptionCallback);
     }
+
     private boolean getConnection(SqlExecute<Connection> connectionCallback, Consumer<Exception> exceptionCallback) {
         try (Connection connection = DriverManager.getConnection(connectionString)) {
             return connectionCallback.invoke(connection);

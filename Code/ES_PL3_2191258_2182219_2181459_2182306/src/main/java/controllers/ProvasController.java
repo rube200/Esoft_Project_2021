@@ -16,6 +16,14 @@ public class ProvasController implements CrudController<Prova> {
     private final ViewBase provasView;
     @Inject
     private ViewController viewController;
+    @Inject
+    private DatabaseConnector databaseConnector;
+    @Inject
+    @Named("EventosController")
+    private CrudController<Evento> eventosController;
+    @Inject
+    @Named("ModalidadesController")
+    private CrudController<Modalidade> modalidadesController;
 
     @Inject
     public ProvasController(@Named("ProvasView") ViewBase provasView) {
@@ -27,18 +35,28 @@ public class ProvasController implements CrudController<Prova> {
         viewController.onBackRequested();
     }
 
-    @Inject
-    private DatabaseConnector databaseConnector;
-
     @Override
     public Prova create() {
         return createOrEdit(null);
     }
 
     @Override
+    public void destroy(Prova prova) {
+        try {
+            if (!databaseConnector.delete(prova)) {
+                return;
+            }
+            provasView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
     public void edit(Prova prova) {
         createOrEdit(prova);
     }
+
     private Prova createOrEdit(Prova prova) {
         Collection<Evento> eventos = databaseConnector.getEventoAtuaisOuFuturos();
         if (eventos == null) {
@@ -75,9 +93,21 @@ public class ProvasController implements CrudController<Prova> {
     }
 
     @Override
-    public void store(Prova data) {
+    public void update(Prova prova) {
         try {
-            if (!databaseConnector.store(data)) {
+            if (!databaseConnector.update(prova)) {
+                return;
+            }
+            provasView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
+    public void store(Prova prova) {
+        try {
+            if (!databaseConnector.store(prova)) {
                 return;
             }
             provasView.prepareView();
@@ -90,16 +120,10 @@ public class ProvasController implements CrudController<Prova> {
         viewController.mostrarAviso(mensagem);
     }
 
-    @Inject
-    @Named("EventosController")
-    private CrudController<Evento> eventosController;
     public Evento novoEvento() {
         return eventosController.create();
     }
 
-    @Inject
-    @Named("ModalidadesController")
-    private CrudController<Modalidade> modalidadesController;
     public Modalidade novaModalidade() {
         return modalidadesController.create();
     }

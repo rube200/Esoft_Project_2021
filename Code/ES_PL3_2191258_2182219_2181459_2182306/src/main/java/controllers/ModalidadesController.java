@@ -13,6 +13,8 @@ public class ModalidadesController implements CrudController<Modalidade> {
 
     @Inject
     private ViewController viewController;
+    @Inject
+    private DatabaseConnector databaseConnector;
 
     @Inject
     public ModalidadesController(@Named("ModalidadesView") ViewBase modalidadesView) {
@@ -22,6 +24,18 @@ public class ModalidadesController implements CrudController<Modalidade> {
 
     void onBack() {
         viewController.onBackRequested();
+    }
+
+    @Override
+    public void destroy(Modalidade modalidade) {
+        try {
+            if (!databaseConnector.delete(modalidade)) {
+                return;
+            }
+            modalidadesView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Override
@@ -41,12 +55,22 @@ public class ModalidadesController implements CrudController<Modalidade> {
         viewController.displayView(modalidadesView);
     }
 
-    @Inject
-    private DatabaseConnector databaseConnector;
     @Override
-    public void store(Modalidade data) {
+    public void update(Modalidade modalidade) {
         try {
-            if (!databaseConnector.store(data)) {
+            if (!databaseConnector.update(modalidade)) {
+                return;
+            }
+            modalidadesView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
+    public void store(Modalidade modalidade) {
+        try {
+            if (!databaseConnector.store(modalidade)) {
                 return;
             }
             modalidadesView.prepareView();

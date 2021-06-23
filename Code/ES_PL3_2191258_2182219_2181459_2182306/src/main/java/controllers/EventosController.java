@@ -14,6 +14,9 @@ public class EventosController implements CrudController<Evento> {
     @Inject
     private ViewController viewController;
     @Inject
+    private DatabaseConnector databaseConnector;
+
+    @Inject
     public EventosController(@Named("EventosView") ViewBase eventosView) {
         this.eventosView = eventosView;
         eventosView.setupBackButton(this::onBack);
@@ -31,6 +34,18 @@ public class EventosController implements CrudController<Evento> {
     }
 
     @Override
+    public void destroy(Evento evento) {
+        try {
+            if (!databaseConnector.delete(evento)) {
+                return;
+            }
+            eventosView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    @Override
     public void edit(Evento evento) {
         viewController.displayPopup(new NovoEditarEvento(this, evento));
     }
@@ -40,8 +55,18 @@ public class EventosController implements CrudController<Evento> {
         viewController.displayView(eventosView);
     }
 
-    @Inject
-    private DatabaseConnector databaseConnector;
+    @Override
+    public void update(Evento evento) {
+        try {
+            if (!databaseConnector.update(evento)) {
+                return;
+            }
+            eventosView.prepareView();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     @Override
     public void store(Evento evento) {
         try {
