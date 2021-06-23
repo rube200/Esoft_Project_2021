@@ -6,7 +6,7 @@ import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import model.Modalidade;
-import views.modalidades.NovaModalidade;
+import views.modalidades.NovaEditarModalidade;
 
 public class ModalidadesController implements CrudController<Modalidade> {
     private final ViewBase modalidadesView;
@@ -25,8 +25,15 @@ public class ModalidadesController implements CrudController<Modalidade> {
     }
 
     @Override
-    public void create() {
-        viewController.displayPopup(new NovaModalidade(this));
+    public Modalidade create() {
+        NovaEditarModalidade dialog = new NovaEditarModalidade(this);
+        viewController.displayPopup(dialog);
+        return dialog.getModalidade();
+    }
+
+    @Override
+    public void edit(Modalidade modalidade) {
+        viewController.displayPopup(new NovaEditarModalidade(this, modalidade));
     }
 
     @Override

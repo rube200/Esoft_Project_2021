@@ -130,6 +130,34 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+    @Override
+    public boolean update(Evento evento) {
+        //language=MariaDB
+        String query = "UPDATE `eventos` " +
+                "SET `Nome` = ?, " +
+                "`Inicio` = ?, " +
+                "`Fim` = ?, " +
+                "`Pais` = ?, " +
+                "`Local` = ? " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setString(1, evento.getNome());
+            prepare.setDate(2, new Date(evento.getInicioTime()));
+            prepare.setDate(3, new Date(evento.getFimTime()));
+            prepare.setString(4, evento.getPais());
+            prepare.setString(5, evento.getLocal());
+            prepare.setInt(6, evento.getId());
+            return true;
+        }, ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
 
     @Override
     public Collection<Prova> getProvas() {
@@ -182,6 +210,34 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+    @Override
+    public boolean update(Prova prova) {
+        //language=MariaDB
+        String query = "UPDATE `provas` " +
+                "SET `Evento_Id` = ?, " +
+                "`Modalidade_Id` = ?, " +
+                "`Sexo` = ?, " +
+                "`Minimos` = ?, " +
+                "`Atletas_Por_Provas` = ? " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, prova.getEventoId());
+            prepare.setInt(2, prova.getModalidadeId());
+            prepare.setString(3, prova.getSexo().name());
+            prepare.setInt(4, prova.getMinimos());
+            prepare.setByte(5, prova.getAtletasPorProva());
+            prepare.setInt(6, prova.getId());
+            return true;
+        }, ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
 
     @Override
     public Collection<Modalidade> getModalidades() {
@@ -213,6 +269,28 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+    @Override
+    public boolean update(Modalidade modalidade) {
+        //language=MariaDB
+        String query = "UPDATE `modalidades` " +
+                "SET `Nome` = ?, " +
+                "`Tipo_De_Contagem` = ? " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setString(1, modalidade.getNome());
+            prepare.setString(2, modalidade.getTipoDeContagem().name());
+            prepare.setInt(6, modalidade.getId());
+            return true;
+        }, ex ->{
+            if (ex instanceof SQLNonTransientConnectionException sqlEx)  {
+                viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
 
     private <T> Collection<T> getDataFromQuery(Class<T> implementation, String sql) {
         Collection<T> dataToReturn = new ArrayList<>();
@@ -224,7 +302,6 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return success ? dataToReturn : null;
     }
-
     private <T> Collection<T> getDataFromResult(Class<T> implementation, ResultSet resultSet) throws ReflectiveOperationException, SQLException {
         ResultSetMetaData sqlMetaData = resultSet.getMetaData();
 
@@ -303,7 +380,6 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return data;
     }
-
     private Collection<Field> getAllDeclaredFields(Class<?> implementation) {
         Collection<Field> declaredFields = new LinkedList<>(Arrays.asList(implementation.getDeclaredFields()));
         Class<?> parentClass = implementation.getSuperclass();
@@ -333,7 +409,6 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return stringBuilder.toString();
     }
-
     private boolean insertModelId(ResultSet result, UniqueId uniqueIdObj) throws SQLException {
         if (!result.next())
             return false;
@@ -345,7 +420,6 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean createStatement(SqlExecute<Statement> statementCallback) {
         return createStatement(statementCallback, null);
     }
-
     private boolean createStatement(SqlExecute<Statement> statementCallback, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (Statement statement = connection.createStatement()) {
@@ -357,7 +431,6 @@ public class DatabaseQuery implements DatabaseConnector {
     private boolean executeQuery(String sql, SqlExecute<ResultSet> result) {
         return executeQuery(sql, null, result, null);
     }
-
     private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -371,10 +444,9 @@ public class DatabaseQuery implements DatabaseConnector {
         }, exceptionCallback);
     }
 
-    private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result) {
-        return executeUpdate(sql, preparedQuery, result, null);
+    private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, Consumer<Exception> exceptionCallback) {
+        return executeUpdate(sql, preparedQuery, null, exceptionCallback);
     }
-
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -390,7 +462,6 @@ public class DatabaseQuery implements DatabaseConnector {
             }
         }, exceptionCallback);
     }
-
     private boolean getConnection(SqlExecute<Connection> connectionCallback, Consumer<Exception> exceptionCallback) {
         try (Connection connection = DriverManager.getConnection(connectionString)) {
             return connectionCallback.invoke(connection);

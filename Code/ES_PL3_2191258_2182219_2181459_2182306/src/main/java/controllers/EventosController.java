@@ -6,7 +6,7 @@ import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import model.Evento;
-import views.eventos.NovoEvento;
+import views.eventos.NovoEditarEvento;
 
 public class EventosController implements CrudController<Evento> {
     private final ViewBase eventosView;
@@ -24,8 +24,15 @@ public class EventosController implements CrudController<Evento> {
     }
 
     @Override
-    public void create() {
-        viewController.displayPopup(new NovoEvento(this));
+    public Evento create() {
+        NovoEditarEvento dialog = new NovoEditarEvento(this);
+        viewController.displayPopup(dialog);
+        return dialog.getEvento();
+    }
+
+    @Override
+    public void edit(Evento evento) {
+        viewController.displayPopup(new NovoEditarEvento(this, evento));
     }
 
     @Override
