@@ -48,10 +48,9 @@ public class ViewController {
         mainWindow.setVisible(true);
     }
 
-    void displayPopup(JFrame frame) {
-        frame.pack();
-        frame.setLocationRelativeTo(mainWindow);
-        frame.setVisible(true);
+    void displayPopup(JDialog dialog) {
+        dialog.pack();
+        dialog.setVisible(true);
     }
 
     public void mostrarAviso(String mensagem) {
