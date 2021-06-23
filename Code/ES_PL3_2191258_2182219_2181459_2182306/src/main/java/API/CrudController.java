@@ -4,7 +4,9 @@ public interface CrudController<T> {
     //todo limitar listas
     //todo permitir enter para guardar
 
-    void create();
+    T create();
+
+    void edit(T data);
 
     void index();
 
