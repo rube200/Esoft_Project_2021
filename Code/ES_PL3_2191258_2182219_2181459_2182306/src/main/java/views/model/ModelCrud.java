@@ -8,14 +8,24 @@ public class ModelCrud<T> implements ModelCrudRow {
     private int editMaxX;
     private int deleteX;
     private int deleteMaxX;
+    private int y;
+    private int maxY;
+
     public ModelCrud(T model, Runnable editCallback, Runnable deleteCallback) {
         this.model = model;
         this.editCallback = editCallback;
         this.deleteCallback = deleteCallback;
     }
 
+    public T getModel() {
+        return model;
+    }
+
     @Override
-    public void onModelPress(int positionX) {
+    public void onModelPress(int positionX, int positionY) {
+        if (y > positionY || positionY > maxY)
+            return;
+
         if (editX <= positionX && positionX <= editMaxX) {
             editCallback.run();
             return;
@@ -29,7 +39,7 @@ public class ModelCrud<T> implements ModelCrudRow {
     }
 
     @Override
-    public void setXPositions(int editX, int editMaxX, int deleteX, int deleteMaxX) {
+    public void setXPositions(int editX, int editMaxX, int deleteX, int deleteMaxX, int y, int maxY) {
         if (editX != 0 && editMaxX != 0) {
             this.editX = editX;
             this.editMaxX = editMaxX;
@@ -39,6 +49,9 @@ public class ModelCrud<T> implements ModelCrudRow {
             this.deleteX = deleteX;
             this.deleteMaxX = deleteMaxX;
         }
+
+        this.y = y;
+        this.maxY = maxY;
     }
 
     @Override

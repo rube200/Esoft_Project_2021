@@ -9,6 +9,7 @@ import model.Prova;
 import model.UniqueId;
 
 import javax.swing.*;
+import javax.swing.text.DateFormatter;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.event.ItemEvent;
@@ -17,23 +18,28 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 
 public class NovaEditarProva extends JDialog {
     private static final int NOVO_EVENTO_ID = -1;
     private static final int NOVA_MODALIDADE_ID = -2;
-    private static final DateFormat DEFAULT_DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
+    private static final DateFormatter DEFAULT_DATE_FORMATTER = new DateFormatter(new SimpleDateFormat("dd/MM/yyyy"));
+    private static final DateFormat DEFAULT_TIME_FORMAT = new SimpleDateFormat("HH:mm");
+    private static final DateFormatter DEFAULT_TIME_FORMATTER = new DateFormatter(DEFAULT_TIME_FORMAT);
     private final ProvasController controller;
     private JPanel mainPanel;
-    //todo verify date and hora
     private JComboBox<Evento> inputEvento;
     private JComboBox<Modalidade> inputModalidade;
     private JTextField inputDiaDeCompeticao;
     private JComboBox<Sexo> inputSexo;
     private JFormattedTextField inputAtletasPorRonda;
     private JFormattedTextField inputData;
-    private JTextField inputHora;
+    private JFormattedTextField inputHora;
     private JFormattedTextField inputMinimos;
     private JButton buttonGuardar;
     private JButton buttonCancelar;
@@ -41,7 +47,7 @@ public class NovaEditarProva extends JDialog {
     private Object lastComboItem;
     private Prova prova;
 
-    public NovaEditarProva(ProvasController controller, Collection<Evento> eventos, Collection<Modalidade> modalidades) {
+    public NovaEditarProva(ProvasController controller, List<Evento> eventos, Collection<Modalidade> modalidades) {
         this.controller = controller;
 
         setContentPane(mainPanel);
@@ -63,7 +69,7 @@ public class NovaEditarProva extends JDialog {
         setupInputs(eventos, modalidades);
     }
 
-    public NovaEditarProva(ProvasController controller, Collection<Evento> eventos, Collection<Modalidade> modalidades, Prova prova) {
+    public NovaEditarProva(ProvasController controller, List<Evento> eventos, Collection<Modalidade> modalidades, Prova prova) {
         this(controller, eventos, modalidades);
         this.provaId = prova.getId();
         setupEditar(prova);
@@ -74,7 +80,7 @@ public class NovaEditarProva extends JDialog {
         buttonGuardar.addActionListener(e -> onGuardar(controller));
     }
 
-    private void setupInputs(Collection<Evento> eventos, Collection<Modalidade> modalidades) {
+    private void setupInputs(List<Evento> eventos, Collection<Modalidade> modalidades) {
         for (Evento evento : eventos) {
             inputEvento.addItem(evento);
         }
@@ -110,14 +116,26 @@ public class NovaEditarProva extends JDialog {
         inputAtletasPorRonda.setFormatterFactory(factory);
         inputAtletasPorRonda.setValue(8);
 
-        /*DefaultFormatter dateFormatter = new DateFormatter(DEFAULT_DATE_FORMAT);
-        factory = new DefaultFormatterFactory(dateFormatter);
+        Evento evento = eventos.get(0);
+        DEFAULT_DATE_FORMATTER.setMinimum(evento.getInicio());
+        DEFAULT_DATE_FORMATTER.setMaximum(evento.getFim());
+        factory = new DefaultFormatterFactory(DEFAULT_DATE_FORMATTER);
 
         inputData.setFormatterFactory(factory);
-        inputData.setValue(new Date());
+        if (evento.getInicioTime() < new Date().getTime())
+            inputData.setValue(evento.getFim());
 
-        inputHora.setFormatterFactory(factory);
-        inputHora.setValue(new Date());*/
+        try {
+            Date min = DEFAULT_TIME_FORMAT.parse("00:00");
+            DEFAULT_TIME_FORMATTER.setMinimum(min);
+            DEFAULT_TIME_FORMATTER.setMaximum(DEFAULT_TIME_FORMAT.parse("23:59"));
+            factory = new DefaultFormatterFactory(DEFAULT_TIME_FORMATTER);
+
+            inputHora.setFormatterFactory(factory);
+            inputHora.setValue(min);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     private void onComboChange(ItemEvent item) {
@@ -159,6 +177,16 @@ public class NovaEditarProva extends JDialog {
                 inputModalidade.setSelectedIndex(index);
             }
         }
+
+        if (selectedItem instanceof Evento evento)  {
+            DEFAULT_DATE_FORMATTER.setMinimum(evento.getInicio());
+            DEFAULT_DATE_FORMATTER.setMaximum(evento.getFim());
+            DefaultFormatterFactory factory = new DefaultFormatterFactory(DEFAULT_DATE_FORMATTER);
+
+            inputData.setFormatterFactory(factory);
+            if (evento.getInicioTime() < new Date().getTime())
+                inputData.setValue(evento.getFim());
+        }
     }
 
     private void setupEditar(Prova prova) {
@@ -182,9 +210,15 @@ public class NovaEditarProva extends JDialog {
             break;
         }
 
+        /*inputDiaDeCompeticao.setText(prova.get);*/
         inputSexo.setSelectedItem(prova.getSexo());
         inputMinimos.setValue(prova.getMinimos());
-        inputAtletasPorRonda.setValue(prova.getAtletasPorProva());
+        inputAtletasPorRonda.setValue((int) prova.getAtletasPorProva());
+        inputData.setValue(prova.getDataDaProva());
+        inputHora.setValue(prova.getDataDaProva());
+
+        System.out.println(prova.getAtletasPorProva());
+        System.out.println(inputAtletasPorRonda.getValue());
     }
 
     private void onCancel() {
@@ -217,8 +251,24 @@ public class NovaEditarProva extends JDialog {
             return;
         }
 
+        Date dataDeProva = (Date) inputData.getValue();
+        if (dataDeProva == null) {
+            controller.mostrarAviso("A data da prova é inválida!");
+            return;
+        }
+
+        Date horaDeProva = (Date) inputHora.getValue();
+        if (horaDeProva == null) {
+            controller.mostrarAviso("A hora da prova é inválida!");
+            return;
+        }
+
+        Calendar cal = Calendar.getInstance();
+        //noinspection deprecation
+        cal.set(dataDeProva.getYear(), dataDeProva.getMonth(), dataDeProva.getDay(), horaDeProva.getHours(), horaDeProva.getMinutes());
+
         byte atletasPorRonda = (byte) (int) inputAtletasPorRonda.getValue();
-        prova = new Prova(evento.getId(), modalidade.getId(), sexo, minimos, atletasPorRonda);
+        prova = new Prova(evento.getId(), modalidade.getId(), sexo, minimos, atletasPorRonda, cal.getTime());
         if (provaId > 0) {
             prova.setId(provaId);
             controller.update(prova);

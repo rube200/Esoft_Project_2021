@@ -5,6 +5,8 @@ import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import controllers.MedalhasController;
+import model.Atleta;
 import model.Evento;
 import model.Modalidade;
 import model.Prova;
@@ -31,8 +33,13 @@ public class WorldAthletics implements ViewBase {
     @Inject
     private DatabaseConnector databaseConnector;
     @Inject
+    @Named("AtletasController")
+    private CrudController<Atleta> atletasController;
+    @Inject
     @Named("EventosController")
     private CrudController<Evento> eventosController;
+    @Inject
+    private MedalhasController medalhasController;
     @Inject
     @Named("ModalidadesController")
     private CrudController<Modalidade> modalidadesController;
@@ -40,7 +47,6 @@ public class WorldAthletics implements ViewBase {
     @Named("ProvasController")
     private CrudController<Prova> provasController;
 
-    @Inject
     WorldAthletics() {
         setupButtons();
         setupLists();
@@ -77,6 +83,8 @@ public class WorldAthletics implements ViewBase {
         buttonGerirEventos.addActionListener(e -> eventosController.index());
         buttonGerirProvas.addActionListener(e -> provasController.index());
         buttonModalidades.addActionListener(e -> modalidadesController.index());
+        buttonMedalhas.addActionListener(e -> medalhasController.mostrar());
+        buttonAtletas.addActionListener(e -> atletasController.index());
     }
 
     private void setupLists() {

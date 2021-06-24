@@ -88,7 +88,7 @@
         </constraints>
         <properties>
           <background color="-11417367"/>
-          <text value="Inscrever Atleta"/>
+          <text value="Ver Inscricoes"/>
         </properties>
       </component>
       <component id="e34e1" class="javax.swing.JButton" binding="buttonMedalhas">

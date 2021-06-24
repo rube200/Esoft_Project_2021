@@ -5,6 +5,7 @@ import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import controllers.InscricoesController;
 import model.Prova;
 import views.model.ModelCrud;
 import views.model.ModelListRender;
@@ -26,6 +27,8 @@ public class Provas implements ViewBase {
     private JButton buttonVoltar;
 
     @Inject
+    private InscricoesController inscricoesController;
+    @Inject
     @Named("ProvasController")
     private CrudController<Prova> provasController;
     @Inject
@@ -43,6 +46,9 @@ public class Provas implements ViewBase {
 
     @Override
     public boolean prepareView() {
+        buttonInscreverAtleta.setEnabled(false);
+        buttonDetalhesProva.setEnabled(false);
+
         Collection<Prova> provas = databaseConnector.getProvas();
         if (provas == null)
             return false;
@@ -62,6 +68,26 @@ public class Provas implements ViewBase {
 
     private void setupButtons() {
         buttonNovaProva.addActionListener(e -> provasController.create());
+        buttonInscreverAtleta.addActionListener(e -> {
+            ModelCrud<Prova> modelCrud = listProvas.getSelectedValue();
+            if (modelCrud == null) {
+                buttonInscreverAtleta.setEnabled(false);
+                return;
+            }
+
+            Prova prova = modelCrud.getModel();
+            inscricoesController.mostrarInscreverAtleta(prova);
+        });
+        buttonDetalhesProva.addActionListener(e -> {
+            ModelCrud<Prova> modelCrud = listProvas.getSelectedValue();
+            if (modelCrud == null) {
+                buttonDetalhesProva.setEnabled(false);
+                return;
+            }
+
+            Prova prova = modelCrud.getModel();
+            //todo
+        });
     }
 
     private void setupList() {
@@ -76,8 +102,18 @@ public class Provas implements ViewBase {
                 if (model == null)
                     return;
 
-                model.onModelPress(e.getX());
+                model.onModelPress(e.getX(), e.getY());
             }
+        });
+        listProvas.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting())
+                return;
+
+            if (!buttonInscreverAtleta.isEnabled())
+                buttonInscreverAtleta.setEnabled(true);
+
+            if (!buttonDetalhesProva.isEnabled())
+                buttonDetalhesProva.setEnabled(true);
         });
     }
 }

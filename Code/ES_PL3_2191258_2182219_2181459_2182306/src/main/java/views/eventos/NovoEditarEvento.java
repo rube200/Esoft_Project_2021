@@ -5,7 +5,6 @@ import model.Evento;
 
 import javax.swing.*;
 import javax.swing.text.DateFormatter;
-import javax.swing.text.DefaultFormatter;
 import javax.swing.text.DefaultFormatterFactory;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -60,7 +59,8 @@ public class NovoEditarEvento extends JDialog {
     }
 
     private void setupDateInputs() {
-        DefaultFormatter formatter = new DateFormatter(DEFAULT_DATE_FORMAT);
+        DateFormatter formatter = new DateFormatter(DEFAULT_DATE_FORMAT);
+        formatter.setMinimum(new Date());
         DefaultFormatterFactory factory = new DefaultFormatterFactory(formatter);
 
         inputInicio.setFormatterFactory(factory);
@@ -97,6 +97,11 @@ public class NovoEditarEvento extends JDialog {
         Date fim = (Date) inputFim.getValue();
         if (fim == null) {
             controller.mostrarAviso("Data de fim inválida!");
+            return;
+        }
+
+        if (inicio.getTime() > fim.getTime()) {
+            controller.mostrarAviso("A data de inicio não pode ser superior a data de fim do Evento!");
             return;
         }
 

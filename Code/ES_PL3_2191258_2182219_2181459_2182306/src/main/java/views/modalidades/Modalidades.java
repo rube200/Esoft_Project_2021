@@ -75,7 +75,7 @@ public class Modalidades implements ViewBase {
                 if (model == null)
                     return;
 
-                model.onModelPress(e.getX());
+                model.onModelPress(e.getX(), e.getY());
             }
         });
     }

@@ -10,6 +10,7 @@ import views.model.ModelCrud;
 import views.model.ModelListRender;
 
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicListUI;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -75,7 +76,7 @@ public class Eventos implements ViewBase {
                 if (model == null)
                     return;
 
-                model.onModelPress(e.getX());
+                model.onModelPress(e.getX(), e.getY());
             }
         });
     }

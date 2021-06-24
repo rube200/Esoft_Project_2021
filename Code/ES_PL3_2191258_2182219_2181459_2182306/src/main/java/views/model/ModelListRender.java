@@ -20,8 +20,17 @@ public class ModelListRender<T extends ModelCrudRow> implements ListCellRenderer
         component.setComponentOrientation(orientation);
         updateComponent(component, list, index, isSelected);
 
-        if (isSelected && cellHasFocus && value != null)
-            value.setXPositions(modelListRow.getButtonEditX(), modelListRow.getButtonEditMaxX(), modelListRow.getButtonDeleteX(), modelListRow.getButtonDeleteMaxX());
+        if (isSelected && cellHasFocus && value != null) {
+            Rectangle rectangle = list.getCellBounds(index, index);
+
+            value.setXPositions(
+                    modelListRow.getButtonEditX(),
+                    modelListRow.getButtonEditMaxX(),
+                    modelListRow.getButtonDeleteX(),
+                    modelListRow.getButtonDeleteMaxX(),
+                    rectangle.y,
+                    rectangle.y + rectangle.height);
+        }
 
         return component;
     }
