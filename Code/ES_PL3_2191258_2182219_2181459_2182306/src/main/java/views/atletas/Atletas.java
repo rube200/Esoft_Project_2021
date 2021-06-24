@@ -2,10 +2,12 @@ package views.atletas;
 
 import API.CrudController;
 import API.DatabaseConnector;
+import API.InscricoesController;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import model.Atleta;
+import model.SemDadoAtletas;
 import views.model.ModelCrud;
 import views.model.ModelListRender;
 
@@ -20,6 +22,7 @@ public class Atletas implements ViewBase {
     private JPanel mainPanel;
     private JList<ModelCrud<Atleta>> listAtletas;
     private JButton buttonNovoAtleta;
+    private JButton buttonInscrever;
     private JButton buttonVoltar;
 
     @Inject
@@ -27,8 +30,10 @@ public class Atletas implements ViewBase {
     private CrudController<Atleta> atletasController;
     @Inject
     private DatabaseConnector databaseConnector;
+    @Inject
+    private InscricoesController inscricoesController;
 
-    public Atletas(){
+    public Atletas() {
         setupButtons();
         setupList();
     }
@@ -40,14 +45,19 @@ public class Atletas implements ViewBase {
 
     @Override
     public boolean prepareView() {
-        Collection<Atleta> atletas = databaseConnector.getAtletas();
-        if (atletas == null)
-            return false;
+        buttonInscrever.setEnabled(false);
+
         atletasListModel.clear();
-        for (Atleta atleta : atletas) {
-            ModelCrud<Atleta> listRow = new ModelCrud<>(atleta, () -> atletasController.edit(atleta), () -> atletasController.destroy(atleta));
-            atletasListModel.addElement(listRow);
+        Collection<Atleta> atletas = databaseConnector.getAtletas();
+        if (atletas == null || atletas.isEmpty())
+            atletasListModel.addElement(new ModelCrud<>(new SemDadoAtletas()));
+        else {
+            for (Atleta atleta : atletas) {
+                ModelCrud<Atleta> listRow = new ModelCrud<>(atleta, () -> atletasController.edit(atleta), () -> atletasController.destroy(atleta));
+                atletasListModel.addElement(listRow);
+            }
         }
+        listAtletas.clearSelection();
 
         return true;
     }
@@ -59,6 +69,18 @@ public class Atletas implements ViewBase {
 
     private void setupButtons() {
         buttonNovoAtleta.addActionListener(e -> atletasController.create());
+
+        buttonInscrever.addActionListener(e -> {
+            ModelCrud<Atleta> modelCrud = listAtletas.getSelectedValue();
+            if (modelCrud == null)
+                return;
+
+            Atleta atleta = modelCrud.getModel();
+            if (atleta.getId() < 1)
+                return;
+
+            inscricoesController.mostrarInscreverAtleta(atleta);
+        });
     }
 
     private void setupList() {
@@ -75,6 +97,21 @@ public class Atletas implements ViewBase {
 
                 model.onModelPress(e.getX(), e.getY());
             }
+        });
+        listAtletas.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting())
+                return;
+
+            ModelCrud<Atleta> modelCrud = listAtletas.getSelectedValue();
+            if (modelCrud == null)
+                return;
+
+            Atleta atleta = modelCrud.getModel();
+            if (atleta == null || atleta.getId() < 1)
+                return;
+
+            if (!buttonInscrever.isEnabled())
+                buttonInscrever.setEnabled(true);
         });
     }
 }

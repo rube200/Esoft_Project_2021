@@ -14,6 +14,11 @@ public class Atleta extends UniqueId {
     public Atleta() {
     }
 
+    protected Atleta(int id, String nome) {
+        super(id);
+        this.nome = nome;
+    }
+
     public Atleta(String nome, String pais, Sexo sexo, Date dataDeNascimento, String contacto) {
         this.nome = nome;
         this.pais = pais;

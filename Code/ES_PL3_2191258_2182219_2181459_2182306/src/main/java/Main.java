@@ -4,18 +4,27 @@ import API.ViewBase;
 import com.google.inject.*;
 import com.google.inject.name.Names;
 import controllers.*;
-import views.atletas.Atletas;
 import views.MainFrame;
-import views.Medalhas;
 import views.WorldAthletics;
+import views.atletas.Atletas;
 import views.eventos.Eventos;
-import views.modalidades.Modalidades;
+import views.eventos.Medalhas;
+import views.eventos.Programa;
 import views.inscricoes.InscreverAtleta;
+import views.inscricoes.InscreverEmProva;
+import views.inscricoes.Inscricoes;
+import views.modalidades.Modalidades;
 import views.provas.Provas;
 
 import javax.swing.*;
 
 class Main extends AbstractModule {
+    @Inject
+    DatabaseConnector databaseConnector;
+
+    @Inject
+    FileIOController fileIOController;
+
     @Inject
     ViewController viewController;
 
@@ -26,6 +35,7 @@ class Main extends AbstractModule {
 
     @Override
     protected void configure() {
+        bind(FileIOController.class);
         bind(DatabaseConnector.class).to(DatabaseQuery.class);
         bind(JFrame.class).to(MainFrame.class);
         bindView(WorldAthletics.class);
@@ -40,11 +50,16 @@ class Main extends AbstractModule {
         bindCrudController(new TypeLiteral<>() {
         }, ProvasController.class, Provas.class);
 
+        bind(API.EventosController.class).to(EventosController.class);
+        bindView(Programa.class);
+
         bind(MedalhasController.class);
         bindView(Medalhas.class);
 
-        bind(InscricoesController.class);
+        bind(API.InscricoesController.class).to(InscricoesController.class);
         bindView(InscreverAtleta.class);
+        bindView(InscreverEmProva.class);
+        bindView(Inscricoes.class);
     }
 
     private <T> void bindCrudController(TypeLiteral<CrudController<T>> typeLiteral, Class<? extends CrudController<T>> controller, Class<? extends ViewBase> view) {

@@ -18,7 +18,6 @@ public class ViewController {
 
     public void initiateProgram() {
         worldAthleticsView.setupBackButton(() -> {
-            //todo
             mainWindow.dispose();
             System.exit(0);
         });
@@ -27,7 +26,6 @@ public class ViewController {
 
     void displayView(ViewBase viewBase) {
         if (!viewBase.prepareView()) {
-            //todo display error or something
             return;
         }
 

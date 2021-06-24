@@ -80,7 +80,7 @@
           <text value="Modalidades"/>
         </properties>
       </component>
-      <component id="ce6" class="javax.swing.JButton" binding="buttonInscreverAtleta">
+      <component id="ce6" class="javax.swing.JButton" binding="buttonVerInscricoes">
         <constraints>
           <grid row="3" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false">
             <preferred-size width="100" height="30"/>
@@ -110,6 +110,7 @@
         </constraints>
         <properties>
           <background color="-11417367"/>
+          <enabled value="false"/>
           <text value="Tendências"/>
         </properties>
       </component>

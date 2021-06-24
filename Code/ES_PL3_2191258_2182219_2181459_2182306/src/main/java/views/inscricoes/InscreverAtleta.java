@@ -3,41 +3,41 @@ package views.inscricoes;
 import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
-import model.Atleta;
-import model.Prova;
+import model.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.util.List;
 import java.util.*;
 import java.util.function.BiConsumer;
 
 public class InscreverAtleta implements ViewBase {
-    private final DefaultListModel<Atleta> atletasNaoInscritosListModel = new DefaultListModel<>();
-    private final DefaultListModel<Atleta> atletasInscritosListModel = new DefaultListModel<>();
-    private final Collection<Atleta> paraInscrever = new HashSet<>();
-    private final Collection<Atleta> paraDesinscrever = new HashSet<>();
+    private final DefaultListModel<Evento> eventosListModel = new DefaultListModel<>();
+    private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
+    private final Collection<Prova> paraInscrever = new HashSet<>();
+    private final Collection<Prova> paraDesinscrever = new HashSet<>();
 
     private JPanel mainPanel;
     private JLabel labelName;
-    private JList<Atleta> listAtletasNaoInscritos;
-    private JList<Atleta> listAtletasInscritos;
-    private JButton buttonAdicionar;
-    private JButton buttonRemover;
-    private JButton buttonConcluir;
+    private JList<Evento> listEventos;
+    private JList<Prova> listProvas;
+    private JButton buttonGuardar;
+    private JButton buttonToggleInscricao;
     private JButton buttonVoltar;
+    private Atleta atleta;
+    @Inject
+    private DatabaseConnector databaseConnector;
+    private Collection<Prova> inscrito;
+    private Collection<Prova> naoInscrito;
 
     public InscreverAtleta() {
         setupButtons();
         setupList();
     }
 
-    private Prova prova;
-    public void setProva(Prova prova) {
-        this.prova = prova;
+    public void setAtleta(Atleta atleta) {
+        this.atleta = atleta;
     }
 
     @Override
@@ -45,31 +45,21 @@ public class InscreverAtleta implements ViewBase {
         return mainPanel;
     }
 
-    @Inject
-    private DatabaseConnector databaseConnector;
-
-    private Collection<Atleta> inscritos;
-    private Collection<Atleta> naoInscritos;
-
     @Override
     public boolean prepareView() {
-        labelName.setText(prova.toString());
+        labelName.setText(atleta.toString());
 
-        paraInscrever.clear();
-        paraDesinscrever.clear();
+        eventosListModel.clear();
+        Collection<Evento> eventos = databaseConnector.getEventoAtuaisOuFuturos();
+        if (eventos == null || eventos.isEmpty())
+            eventosListModel.addElement(new SemDadosEventos());
+        else
+            eventosListModel.addAll(eventos);
+        listEventos.clearSelection();
 
-        inscritos = databaseConnector.getAtletasInscritos(prova);
-        if (inscritos == null)
-            return false;
-        atletasInscritosListModel.clear();
-        atletasInscritosListModel.addAll(inscritos);
-
-        naoInscritos = databaseConnector.getAtletasNaoInscritos(prova);
-        if (naoInscritos == null)
-            return false;
-        atletasNaoInscritosListModel.clear();
-        atletasNaoInscritosListModel.addAll(naoInscritos);
-
+        provasListModel.clear();
+        provasListModel.addElement(new SemDadosProvas());
+        listProvas.clearSelection();
         return true;
     }
 
@@ -79,60 +69,104 @@ public class InscreverAtleta implements ViewBase {
     }
 
     private void setupButtons() {
-        buttonAdicionar.addActionListener(new AbstractAction() {
+        buttonToggleInscricao.addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Collection<Atleta> toChangeList = listAtletasNaoInscritos.getSelectedValuesList();
-                changeList(toChangeList, true);
-            }
-        });
-        buttonRemover.addActionListener(new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Collection<Atleta> toChangeList = listAtletasInscritos.getSelectedValuesList();
-                changeList(toChangeList, false);
+                Prova prova = listProvas.getSelectedValue();
+                if (prova == null || prova.getId() < 1)
+                    return;
+
+                toggleInscricao();
+                listProvas.clearSelection();
             }
         });
     }
 
-    public void setupConcluirButton(BiConsumer<Prova, Map.Entry<List<Atleta>, List<Atleta>>> buttonConcluirCallback) {
-        buttonConcluir.addActionListener(e -> buttonConcluirCallback.accept(prova, new AbstractMap.SimpleEntry<>(new ArrayList<>(paraInscrever), new ArrayList<>(paraDesinscrever))));
+    public void setupConcluirButton(BiConsumer<Atleta, Map.Entry<List<Prova>, List<Prova>>> buttonConcluirCallback) {
+        buttonGuardar.addActionListener(e -> buttonConcluirCallback.accept(atleta, new AbstractMap.SimpleEntry<>(new ArrayList<>(paraInscrever), new ArrayList<>(paraDesinscrever))));
     }
 
-    private void changeList(Collection<Atleta> toChangeList, boolean inscrever) {
-        if (toChangeList == null || toChangeList.isEmpty())
+    private void toggleInscricao() {
+        ProvaInscricao prova = (ProvaInscricao) listProvas.getSelectedValue();
+        if (prova == null || prova.getId() < 1)
             return;
 
-        for (Atleta atleta : toChangeList) {
-            (inscrever ? atletasNaoInscritosListModel : atletasInscritosListModel).removeElement(atleta);
-            (inscrever ? atletasInscritosListModel : atletasNaoInscritosListModel).addElement(atleta);
+        if (prova.inscrito)
+            changeList(prova, paraInscrever, paraDesinscrever, naoInscrito);
+        else
+            changeList(prova, paraDesinscrever, paraInscrever, inscrito);
 
-            if ((inscrever ? inscritos : naoInscritos).contains(atleta) || (inscrever ? paraInscrever : paraDesinscrever).contains(atleta))
-                continue;
+        prova.inscrito = !prova.inscrito;
+    }
 
-            (inscrever ? paraInscrever : paraDesinscrever).add(atleta);
-        }
+    private void changeList(Prova prova, Collection<Prova> toRemove, Collection<Prova> toAdd, Collection<Prova> initial) {
+        toRemove.remove(prova);
+        if (initial.contains(prova) || toAdd.contains(prova))
+            return;
+
+        toAdd.add(prova);
     }
 
     private void setupList() {
-        listAtletasNaoInscritos.setModel(atletasNaoInscritosListModel);
-        listAtletasNaoInscritos.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        listAtletasNaoInscritos.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                super.focusLost(e);
-                listAtletasInscritos.clearSelection();
+        listEventos.setModel(eventosListModel);
+        listEventos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listEventos.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting())
+                return;
+
+            Evento evento = listEventos.getSelectedValue();
+            if (evento == null || evento.getId() < 1)
+                return;
+
+            if (buttonToggleInscricao.isEnabled())
+                buttonToggleInscricao.setEnabled(false);
+
+            provasListModel.clear();
+            inscrito = databaseConnector.getProvasInscrito(evento, atleta);
+            if (inscrito != null && !inscrito.isEmpty()) {
+                for (Prova prova : inscrito) {
+                    Prova listRow = new ProvaInscricao(true, prova);
+                    provasListModel.addElement(listRow);
+                }
             }
+            naoInscrito = databaseConnector.getProvasNaoInscrito(evento, atleta);
+            if (naoInscrito != null && !naoInscrito.isEmpty()) {
+                for (Prova prova : naoInscrito) {
+                    Prova listRow = new ProvaInscricao(false, prova);
+                    provasListModel.addElement(listRow);
+                }
+            }
+            if (provasListModel.isEmpty())
+                provasListModel.addElement(new SemDadosProvas());
+            listProvas.clearSelection();
         });
 
-        listAtletasInscritos.setModel(atletasInscritosListModel);
-        listAtletasInscritos.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        listAtletasInscritos.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                super.focusLost(e);
-                listAtletasNaoInscritos.clearSelection();
-            }
+        listProvas.setModel(provasListModel);
+        listProvas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listProvas.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting())
+                return;
+
+            Prova prova = listProvas.getSelectedValue();
+            if (prova == null || prova.getId() < 1)
+                return;
+
+            if (!buttonToggleInscricao.isEnabled())
+                buttonToggleInscricao.setEnabled(true);
         });
+    }
+
+    public static class ProvaInscricao extends Prova {
+        private boolean inscrito;
+
+        private ProvaInscricao(boolean inscrito, Prova prova) {
+            super(prova.getId(), prova.getNome());
+            this.inscrito = inscrito;
+        }
+
+        @Override
+        public String toString() {
+            return getNome() + " (" + (inscrito ? "Inscrito" : "Por Inscrever") + ")";
+        }
     }
 }

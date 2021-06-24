@@ -14,15 +14,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class DatabaseQuery implements DatabaseConnector {
-    private final String connectionString;
+    private final FileIOController fileIOController;
     private final Logger logger;
 
     @Inject
     private ViewController viewController;
 
     @Inject
-    public DatabaseQuery(Logger logger) {
-        connectionString = "jdbc:mariadb://localhost/esoft_projeto?createDatabaseIfNotExist=true&user=root&password=12345";
+    public DatabaseQuery(FileIOController fileIOController, Logger logger) {
+        this.fileIOController = fileIOController;
         this.logger = logger;
 
         checkSchema();
@@ -32,7 +32,7 @@ public class DatabaseQuery implements DatabaseConnector {
         createStatement(statement -> {
             String query = "CREATE TABLE IF NOT EXISTS `eventos` (" +
                     "`Id` INT AUTO_INCREMENT, " +
-                    "`Nome` VARCHAR(50) NOT NULL, " +
+                    "`Nome` VARCHAR(100) NOT NULL, " +
                     "`Inicio` DATE NOT NULL, " +
                     "`Fim` DATE NOT NULL, " +
                     "`Pais` VARCHAR(75) NOT NULL, " +
@@ -58,9 +58,10 @@ public class DatabaseQuery implements DatabaseConnector {
                     "`Id` INT AUTO_INCREMENT, " +
                     "`Evento_Id` INT NOT NULL, " +
                     "`Modalidade_Id` INT NOT NULL, " +
+                    "`Dia_De_Competicao` VARCHAR(25) NOT NULL, " +
                     "`Sexo` ENUM('M','F','X') NOT NULL, " +
                     "`Minimos` INT NOT NULL, " +
-                    "`Atletas_Por_Prova` TINYINT(1) UNSIGNED NOT NULL DEFAULT 8, " +
+                    "`Atletas_Por_Prova` TINYINT UNSIGNED NOT NULL DEFAULT 8, " +
                     "`Data_Da_Prova` DATETIME NOT NULL, " +
                     "`Deleted_At` TIMESTAMP NULL DEFAULT NULL, " +
                     "PRIMARY KEY (`Id`), " +
@@ -68,8 +69,21 @@ public class DatabaseQuery implements DatabaseConnector {
                     "KEY `Modalidades_Provas` (`Modalidade_Id`), " +
                     "CONSTRAINT `Eventos_Provas` FOREIGN KEY (`Evento_Id`) REFERENCES `eventos` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Modalidades_Provas` FOREIGN KEY (`Modalidade_Id`) REFERENCES `modalidades` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Validate_Dia_De_Competicao` CHECK (`Dia_De_Competicao` <> ''), " +
                     "CONSTRAINT `Validate_Minimos` CHECK (`Minimos` > '0'), " +
                     "CONSTRAINT `Validate_Atletas_Por_Prova` CHECK (`Atletas_Por_Prova` > '1'));";
+            statement.execute(query);
+
+            query = "CREATE TABLE IF NOT EXISTS `etapas` (" +
+                    "`Id` INT AUTO_INCREMENT, " +
+                    "`Prova_Id` INT NOT NULL, " +
+                    "`Nome` VARCHAR(75) NOT NULL, " +
+                    "`Data_De_Etapa` DATETIME NOT NULL, " +
+                    "`Deleted_At` TIMESTAMP NULL DEFAULT NULL, " +
+                    "PRIMARY KEY (`Id`), " +
+                    "KEY `Provas_Etapas` (`Prova_Id`), " +
+                    "CONSTRAINT `Provas_Etapas` FOREIGN KEY (`Prova_Id`) REFERENCES `provas` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Validate_Nome` CHECK (`Nome` <> ''))";
             statement.execute(query);
 
             query = "CREATE TABLE IF NOT EXISTS `atletas` (" +
@@ -88,6 +102,18 @@ public class DatabaseQuery implements DatabaseConnector {
                     "CONSTRAINT `Validate_Contacto` CHECK (`Contacto` <> ''));";
             statement.execute(query);
 
+            query = "CREATE TABLE IF NOT EXISTS `etapas_grupos` (" +
+                    "`Etapa_Id` INT, " +
+                    "`Atleta_Id` INT, " +
+                    "`Resultado` FLOAT NOT NULL," +
+                    "PRIMARY KEY (`Etapa_Id`, `Atleta_Id`), " +
+                    "KEY `Etapas_Etapas_Grupos` (`Etapa_Id`), " +
+                    "KEY `Atletas_Etapas_Grupos` (`Atleta_Id`), " +
+                    "CONSTRAINT `Etapas_Etapas_Grupos` FOREIGN KEY (`Etapa_Id`) REFERENCES `etapas` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Atletas_Etapas_Grupos` FOREIGN KEY (`Atleta_Id`) REFERENCES `atletas` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Validate_Resultado` CHECK (`Resultado` >= '0'))";
+            statement.execute(query);
+
             query = "CREATE TABLE IF NOT EXISTS `inscricoes` (" +
                     "`Prova_Id` INT, " +
                     "`Atleta_Id` INT, " +
@@ -96,6 +122,19 @@ public class DatabaseQuery implements DatabaseConnector {
                     "KEY `Inscricoes_Atletas` (`Atleta_Id`), " +
                     "CONSTRAINT `Inscricoes_Provas` FOREIGN KEY (`Prova_Id`) REFERENCES `provas` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Inscricoes_Atletas` FOREIGN KEY (`Atleta_Id`) REFERENCES `atletas` (`Id`) ON UPDATE CASCADE);";
+            statement.execute(query);
+
+            query = "CREATE TABLE IF NOT EXISTS `recordes` (" +
+                    "`Id` INT AUTO_INCREMENT, " +
+                    "`Modalidade_Id` INT NOT NULL, " +
+                    "`Atleta_Id` INT NOT NULL, " +
+                    "`Resultado` FLOAT NOT NULL," +
+                    "PRIMARY KEY (`Id`), " +
+                    "KEY `Modalidades_Recordes` (`Modalidade_Id`), " +
+                    "KEY `Atletas_Recordes` (`Atleta_Id`), " +
+                    "CONSTRAINT `Modalidades_Recordes` FOREIGN KEY (`Modalidade_Id`) REFERENCES `modalidades` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Atletas_Recordes` FOREIGN KEY (`Atleta_Id`) REFERENCES `atletas` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Validate_Resultado` CHECK (`Resultado` >= '0'))";
             statement.execute(query);
 
             return true;
@@ -160,6 +199,7 @@ public class DatabaseQuery implements DatabaseConnector {
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
     }
+
     @Override
     public Collection<Atleta> getAtletas() {
         //language=MariaDB
@@ -217,7 +257,8 @@ public class DatabaseQuery implements DatabaseConnector {
 
     private void prepareAtleta(Atleta atleta, PreparedStatement prepare) throws SQLException {
         prepare.setString(1, atleta.getNome());
-        prepare.setString(2, atleta.getPais());
+        String word = atleta.getPais();
+        prepare.setString(2, word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase());
         prepare.setString(3, atleta.getSexo().name());
         prepare.setDate(4, new Date(atleta.getDataDeNascimentoTime()));
         prepare.setString(5, atleta.getContacto());
@@ -290,8 +331,8 @@ public class DatabaseQuery implements DatabaseConnector {
         String query = "SELECT * " +
                 "FROM `eventos` " +
                 "WHERE " + (decorrer ?
-                (!antigos  ? "`Fim` >= CURRENT_DATE() AND " : "") +
-                (!futuros ? "`Inicio` <= CURRENT_DATE() AND " : "")
+                (!antigos ? "`Fim` >= CURRENT_DATE() AND " : "") +
+                        (!futuros ? "`Inicio` <= CURRENT_DATE() AND " : "")
                 : "") +
                 "`Deleted_At` IS NULL;";
 
@@ -347,8 +388,10 @@ public class DatabaseQuery implements DatabaseConnector {
         prepare.setString(1, evento.getNome());
         prepare.setDate(2, new Date(evento.getInicioTime()));
         prepare.setDate(3, new Date(evento.getFimTime()));
-        prepare.setString(4, evento.getPais());
-        prepare.setString(5, evento.getLocal());
+        String word = evento.getPais();
+        prepare.setString(4, word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase());
+        word = evento.getLocal();
+        prepare.setString(5, word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase());
     }
 
     @Override
@@ -374,6 +417,99 @@ public class DatabaseQuery implements DatabaseConnector {
     @Override
     public Collection<Prova> getProvas() {
         return getProvas(false);
+    }
+
+    @Override
+    public Collection<Prova> getProvas(Evento evento) {
+        //language=MariaDB
+        String query = "SELECT `provas`.*, CONCAT(`eventos`.`Nome`, ' - ', `modalidades`.`Nome`) AS nome " +
+                "FROM `provas` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `eventos` " +
+                "WHERE `Id` = ? AND " +
+                "`Deleted_At` IS NULL" +
+                ") `eventos` " +
+                "ON `eventos`.`Id` = `provas`.`Evento_Id` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `modalidades` " +
+                "WHERE `Deleted_At` IS NULL" +
+                ") `modalidades` " +
+                "ON `modalidades`.`Id` = `provas`.`Modalidade_Id` " +
+                "WHERE `Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Prova.class, query, prepare -> {
+            prepare.setInt(1, evento.getId());
+            return true;
+        });
+    }
+
+    @Override
+    public Collection<Prova> getProvasInscrito(Evento evento, Atleta atleta) {
+        //language=MariaDB
+        String query = "SELECT `provas`.*, CONCAT(`eventos`.`Nome`, ' - ', `modalidades`.`Nome`) AS nome " +
+                "FROM `provas` " +
+                "INNER JOIN (" +
+                "SELECT `Prova_Id` " +
+                "FROM `inscricoes` " +
+                "WHERE `Atleta_Id` = ?" +
+                ") `inscricoes` " +
+                "ON `inscricoes`.`Prova_Id` = `provas`.`id` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `eventos` " +
+                "WHERE `Id` = ? AND " +
+                "`Deleted_At` IS NULL" +
+                ") `eventos` " +
+                "ON `eventos`.`Id` = `provas`.`Evento_Id` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `modalidades` " +
+                "WHERE `Deleted_At` IS NULL" +
+                ") `modalidades` " +
+                "ON `modalidades`.`Id` = `provas`.`Modalidade_Id` " +
+                "WHERE `Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Prova.class, query, prepare -> {
+            prepare.setInt(1, atleta.getId());
+            prepare.setInt(2, evento.getId());
+            return true;
+        });
+    }
+
+    @Override
+    public Collection<Prova> getProvasNaoInscrito(Evento evento, Atleta atleta) {
+        //language=MariaDB
+        String query = "SELECT `provas`.*, CONCAT(`eventos`.`Nome`, ' - ', `modalidades`.`Nome`) AS nome " +
+                "FROM `provas` " +
+                "LEFT JOIN (" +
+                "SELECT `Prova_Id` " +
+                "FROM `inscricoes` " +
+                "WHERE `Atleta_Id` = ?" +
+                ") `inscricoes` " +
+                "ON `inscricoes`.`Prova_Id` = `provas`.`id` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `eventos` " +
+                "WHERE `Id` = ? AND " +
+                "`Deleted_At` IS NULL" +
+                ") `eventos` " +
+                "ON `eventos`.`Id` = `provas`.`Evento_Id` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Nome` " +
+                "FROM `modalidades` " +
+                "WHERE `Deleted_At` IS NULL" +
+                ") `modalidades` " +
+                "ON `modalidades`.`Id` = `provas`.`Modalidade_Id` " +
+                "WHERE `inscricoes`.`Prova_Id` IS NULL AND" +
+                "`Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Prova.class, query, prepare -> {
+            prepare.setInt(1, atleta.getId());
+            prepare.setInt(2, evento.getId());
+            return true;
+        });
     }
 
     @Override
@@ -409,8 +545,8 @@ public class DatabaseQuery implements DatabaseConnector {
     public boolean store(Prova prova) {
         //language=MariaDB
         String query = "INSERT INTO `provas` " +
-                "(`Evento_Id`, `Modalidade_Id`, `Sexo`, `Minimos`, `Atletas_Por_Prova`, `Data_Da_Prova`) " +
-                "VALUES (?, ?, ?, ?, ?, ?);";
+                "(`Evento_Id`, `Modalidade_Id`, `Dia_De_Competicao`, `Sexo`, `Minimos`, `Atletas_Por_Prova`, `Data_Da_Prova`) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
         return executeUpdate(query, prepare -> {
             prepareProva(prova, prepare);
@@ -431,6 +567,7 @@ public class DatabaseQuery implements DatabaseConnector {
         String query = "UPDATE `provas` " +
                 "SET `Evento_Id` = ?, " +
                 "`Modalidade_Id` = ?, " +
+                "`Dia_De_Competicao` = ?, " +
                 "`Sexo` = ?, " +
                 "`Minimos` = ?, " +
                 "`Atletas_Por_Prova` = ?, " +
@@ -439,7 +576,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return executeUpdate(query, prepare -> {
             prepareProva(prova, prepare);
-            prepare.setInt(7, prova.getId());
+            prepare.setInt(8, prova.getId());
             return true;
         }, ex -> {
             if (ex instanceof SQLNonTransientConnectionException sqlEx) {
@@ -454,10 +591,11 @@ public class DatabaseQuery implements DatabaseConnector {
     private void prepareProva(Prova prova, PreparedStatement prepare) throws SQLException {
         prepare.setInt(1, prova.getEventoId());
         prepare.setInt(2, prova.getModalidadeId());
-        prepare.setString(3, prova.getSexo().name());
-        prepare.setInt(4, prova.getMinimos());
-        prepare.setByte(5, prova.getAtletasPorProva());
-        prepare.setTimestamp(6, new Timestamp(prova.getDataDaProvaTime()));
+        prepare.setString(3, prova.getDiaDeCompeticao());
+        prepare.setString(4, prova.getSexo().name());
+        prepare.setInt(5, prova.getMinimos());
+        prepare.setByte(6, prova.getAtletasPorProva());
+        prepare.setTimestamp(7, new Timestamp(prova.getDataDaProvaTime()));
     }
 
     @Override
@@ -535,43 +673,85 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     @Override
+    public boolean inscreverAtleta(Atleta atleta, List<Prova> inscrever, List<Prova> desinscrever) {
+        int atletaId = atleta.getId();
+        return getConnection(connection -> {
+            connection.setAutoCommit(false);
+
+            if (!inscrever.isEmpty()) {
+                int size = inscrever.size();
+                StringBuilder queryBuilder = prepareInsertInscricaoQuery(size);
+                if (prepareInscreverAtleta(inscrever, atletaId, connection, queryBuilder, size))
+                    return false;
+            }
+
+            if (!desinscrever.isEmpty()) {
+                int size = desinscrever.size();
+                StringBuilder queryBuilder = prepareDeleteInscricaoQuery(size);
+                if (prepareInscreverAtleta(desinscrever, atletaId, connection, queryBuilder, size))
+                    return false;
+            }
+
+            connection.commit();
+            return true;
+        }, ex -> logger.log(Level.WARNING, ex.getMessage(), ex));
+    }
+
+    private StringBuilder prepareInsertInscricaoQuery(int size) {
+        StringBuilder queryBuilder = new StringBuilder("INSERT IGNORE INTO `inscricoes` (`Prova_Id`, `Atleta_Id`) VALUES ");
+        for (int i = 1; i <= size; i++) {
+            queryBuilder.append("(?, ?)");
+            if (i == size)
+                queryBuilder.append(";");
+            else
+                queryBuilder.append(", ");
+        }
+        return queryBuilder;
+    }
+
+    private StringBuilder prepareDeleteInscricaoQuery(int size) {
+        StringBuilder queryBuilder = new StringBuilder("DELETE FROM `inscricoes` WHERE ");
+        for (int i = 1; i <= size; i++) {
+            queryBuilder.append("(`Prova_Id` = ? AND `Atleta_Id` = ?)");
+            if (i == size)
+                queryBuilder.append(";");
+            else
+                queryBuilder.append(" OR ");
+        }
+        return queryBuilder;
+    }
+
+    private boolean prepareInscreverAtleta(List<Prova> collection, int atletaId, Connection connection, StringBuilder queryBuilder, int size) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())) {
+            for (int i = 1; i <= size; i++) {
+                Prova prova = collection.get(i - 1);
+                int sqlIndex = i * 2;
+                preparedStatement.setInt(sqlIndex - 1, prova.getId());
+                preparedStatement.setInt(sqlIndex, atletaId);
+            }
+
+            if (preparedStatement.executeUpdate() == 0)
+                return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean inscreverAtletasEmProva(Prova prova, List<Atleta> inscrever, List<Atleta> desinscrever) {
         int provaId = prova.getId();
         return getConnection(connection -> {
             connection.setAutoCommit(false);
 
             if (!inscrever.isEmpty()) {
-                StringBuilder queryBuilder = new StringBuilder("INSERT IGNORE INTO `inscricoes` " +
-                        "(`Prova_Id`, `Atleta_Id`) VALUES ");
-
                 int size = inscrever.size();
-                for (int i = 1; i <= size; i++)
-                {
-                    queryBuilder.append("(?, ?)");
-                    if (i == size)
-                        queryBuilder.append(";");
-                    else
-                        queryBuilder.append(", ");
-                }
-
+                StringBuilder queryBuilder = prepareInsertInscricaoQuery(size);
                 if (prepareInscreverAtletaEmProva(inscrever, provaId, connection, queryBuilder, size))
                     return false;
             }
 
             if (!desinscrever.isEmpty()) {
-                StringBuilder queryBuilder = new StringBuilder("DELETE FROM`inscricoes` " +
-                        "WHERE ");
-
                 int size = desinscrever.size();
-                for (int i = 1; i <= size; i++)
-                {
-                    queryBuilder.append("(`Prova_Id` = ? AND `Atleta_Id` = ?)");
-                    if (i == size)
-                        queryBuilder.append(";");
-                    else
-                        queryBuilder.append(" OR ");
-                }
-
+                StringBuilder queryBuilder = prepareDeleteInscricaoQuery(size);
                 if (prepareInscreverAtletaEmProva(desinscrever, provaId, connection, queryBuilder, size))
                     return false;
             }
@@ -581,11 +761,127 @@ public class DatabaseQuery implements DatabaseConnector {
         }, ex -> logger.log(Level.WARNING, ex.getMessage(), ex));
     }
 
+    @Override
+    public Collection<Medalhas> getMedalhados() {
+        //language=MariaDB
+        String query = "SELECT `provas`.`Id` AS Prova_Id, `atletas`.`Pais` AS Pais, `etapas_grupos`.`resultado` AS Resultado " +
+                "FROM `provas` " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Prova_Id` " +
+                "FROM `etapas` " +
+                "WHERE (" +
+                "SELECT MAX(`e`.`Data_De_Etapa`) " +
+                "FROM `etapas` `e` " +
+                "WHERE `e`.`Prova_Id` = `Id`) <= NOW()" +
+                ") `etapas` " +
+                "ON `provas`.`Id` = `etapas`.`Prova_Id` " +
+                "INNER JOIN `etapas_grupos` " +
+                "ON `etapas_grupos`.`Etapa_Id` = `etapas`.`Id` " +
+                "INNER JOIN `atletas` " +
+                "ON `atletas`.`Id` = `etapas_grupos`.`Atleta_Id` " +
+                "WHERE (" +
+                "SELECT MAX(`p`.`Data_Da_Prova`) " +
+                "FROM `provas` `p` " +
+                "WHERE `p`.`Deleted_At` IS NULL) <= NOW() AND " +
+                "`provas`.`Deleted_At` IS NULL " +
+                "ORDER BY `etapas_grupos`.`resultado` " +
+                "DESC LIMIT 3;";
+
+        HashMap<String, Medalhas> todasAsMedalhas = new HashMap<>();
+        boolean sucesso = executeQuery(query, queryResult -> {
+            var medalhados = getTodasMedalhas(queryResult);
+            for (var entry : medalhados.entrySet()) {
+                todasAsMedalhas.put(entry.getKey(), entry.getValue());
+            }
+            return true;
+        });
+
+        return sucesso ? todasAsMedalhas.values() : null;
+    }
+
+    @Override
+    public Collection<Medalhas> getMedalhados(Evento evento) {
+//language=MariaDB
+        String query = "SELECT `provas`.`Id` AS Prova_Id, `atletas`.`Pais` AS Pais, `etapas_grupos`.`resultado` AS Resultado " +
+                "FROM `provas` " +
+                "INNER JOIN `eventos` " +
+                "ON `eventos`.`Id` = ? " +
+                "INNER JOIN (" +
+                "SELECT `Id`, `Prova_Id` " +
+                "FROM `etapas` " +
+                "WHERE (" +
+                "SELECT MAX(`e`.`Data_De_Etapa`) " +
+                "FROM `etapas` `e` " +
+                "WHERE `e`.`Prova_Id` = `Id`) <= NOW()" +
+                ") `etapas` " +
+                "ON `provas`.`Id` = `etapas`.`Prova_Id` " +
+                "INNER JOIN `etapas_grupos` " +
+                "ON `etapas_grupos`.`Etapa_Id` = `etapas`.`Id` " +
+                "INNER JOIN `atletas` " +
+                "ON `atletas`.`Id` = `etapas_grupos`.`Atleta_Id` " +
+                "WHERE (" +
+                "SELECT MAX(`p`.`Data_Da_Prova`) " +
+                "FROM `provas` `p` " +
+                "WHERE `p`.`Deleted_At` IS NULL) <= NOW() AND " +
+                "`provas`.`Deleted_At` IS NULL " +
+                "ORDER BY `etapas_grupos`.`resultado` " +
+                "DESC LIMIT 3;";
+
+        HashMap<String, Medalhas> todasAsMedalhas = new HashMap<>();
+        boolean sucesso = executeQuery(query, prepare -> {
+            prepare.setInt(1, evento.getId());
+            return true;
+        }, queryResult -> {
+            var medalhados = getTodasMedalhas(queryResult);
+            for (var entry : medalhados.entrySet()) {
+                todasAsMedalhas.put(entry.getKey(), entry.getValue());
+            }
+            return true;
+        });
+
+        return sucesso ? todasAsMedalhas.values() : null;
+    }
+
+    private HashMap<String, Medalhas> getTodasMedalhas(ResultSet queryResult) throws SQLException {
+        HashMap<String, Medalhas> todasAsMedalhas = new HashMap<>();
+        HashMap<Integer, List<SimplePaisResultado>> resultadosDeProvas = new HashMap<>();
+
+        while (queryResult.next()) {
+            Integer provaId = queryResult.getInt(1);
+            String pais = queryResult.getString(2);
+            Float resultado = queryResult.getFloat(3);
+
+            List<SimplePaisResultado> resultPais = resultadosDeProvas.computeIfAbsent(provaId, k -> new LinkedList<>());
+            resultPais.add(new SimplePaisResultado(resultado, pais));
+        }
+
+        for (var resultado : resultadosDeProvas.entrySet()) {
+            var resultados = resultado.getValue();
+            Collections.sort(resultados);
+
+            for (int i = 0; i < 3; i++) {
+                SimplePaisResultado result = resultados.get(i);
+                Medalhas medalhas = todasAsMedalhas.get(result.pais);
+                if (medalhas == null) {
+                    medalhas = new Medalhas(result.pais);
+                    todasAsMedalhas.put(result.pais, medalhas);
+                }
+
+                switch (i) {
+                    case 0 -> medalhas.incrementOuro();
+                    case 1 -> medalhas.incrementPrata();
+                    case 2 -> medalhas.incrementBronze();
+                }
+            }
+        }
+
+        return todasAsMedalhas;
+    }
+
     private boolean prepareInscreverAtletaEmProva(List<Atleta> collection, int provaId, Connection connection, StringBuilder queryBuilder, int size) throws SQLException {
         try (PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())) {
-            for (int i = 1; i <= size; i++)
-            {
-                Atleta atleta = collection.get(i-1);
+            for (int i = 1; i <= size; i++) {
+                Atleta atleta = collection.get(i - 1);
                 int sqlIndex = i * 2;
                 preparedStatement.setInt(sqlIndex - 1, provaId);
                 preparedStatement.setInt(sqlIndex, atleta.getId());
@@ -607,6 +903,7 @@ public class DatabaseQuery implements DatabaseConnector {
 
         return success ? dataToReturn : null;
     }
+
     private <T> Collection<T> getDataFromQuery(Class<T> implementation, String query, SqlExecute<PreparedStatement> preparedQuery) {
         Collection<T> dataToReturn = new ArrayList<>();
         boolean success = executeQuery(query, preparedQuery, result -> {
@@ -738,16 +1035,12 @@ public class DatabaseQuery implements DatabaseConnector {
         return true;
     }
 
-    private boolean createStatement(SqlExecute<Statement> statementCallback) {
-        return createStatement(statementCallback, null);
-    }
-
-    private boolean createStatement(SqlExecute<Statement> statementCallback, Consumer<Exception> exceptionCallback) {
-        return getConnection(connection -> {
+    private void createStatement(SqlExecute<Statement> statementCallback) {
+        getConnection(connection -> {
             try (Statement statement = connection.createStatement()) {
                 return statementCallback.invoke(statement);
             }
-        }, exceptionCallback);
+        }, null);
     }
 
     private boolean executeQuery(String sql, SqlExecute<ResultSet> result) {
@@ -755,10 +1048,6 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result) {
-        return executeQuery(sql, preparedQuery, result, null);
-    }
-
-    private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
         return getConnection(connection -> {
             try (PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 if (preparedQuery != null && !preparedQuery.invoke(preparedStatement))
@@ -768,7 +1057,7 @@ public class DatabaseQuery implements DatabaseConnector {
                     return result.invoke(resultSet);
                 }
             }
-        }, exceptionCallback);
+        }, null);
     }
 
     private boolean executeUpdate(String sql, SqlExecute<PreparedStatement> preparedQuery, Consumer<Exception> exceptionCallback) {
@@ -795,7 +1084,7 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     private boolean getConnection(SqlExecute<Connection> connectionCallback, Consumer<Exception> exceptionCallback) {
-        try (Connection connection = DriverManager.getConnection(connectionString)) {
+        try (Connection connection = DriverManager.getConnection(fileIOController.connectionString())) {
             return connectionCallback.invoke(connection);
         } catch (Exception ex) {
             if (exceptionCallback != null)
@@ -809,5 +1098,15 @@ public class DatabaseQuery implements DatabaseConnector {
     @FunctionalInterface
     private interface SqlExecute<T> {
         boolean invoke(T action) throws ReflectiveOperationException, SQLException;
+    }
+
+    private record SimplePaisResultado(Float resultado, String pais) implements Comparable<SimplePaisResultado> {
+        @Override
+        public int compareTo(SimplePaisResultado o) {
+            if (o.resultado.equals(resultado))
+                return 0;
+
+            return o.resultado.compareTo(resultado);
+        }
     }
 }

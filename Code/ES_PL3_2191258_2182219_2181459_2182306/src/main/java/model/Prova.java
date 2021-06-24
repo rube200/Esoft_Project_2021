@@ -5,6 +5,7 @@ import API.Sexo;
 import java.util.Date;
 
 public class Prova extends UniqueId {
+    String diaDeCompeticao;
     @SuppressWarnings("unused")
     private String nome;
     private int eventoId;
@@ -17,13 +18,23 @@ public class Prova extends UniqueId {
     public Prova() {
     }
 
-    public Prova(int eventoId, int modalidadeId, Sexo sexo, int minimos, byte atletasPorProva, Date dataDaProva) {
+    protected Prova(int id, String nome) {
+        super(id);
+        this.nome = nome;
+    }
+
+    public Prova(int eventoId, int modalidadeId, String diaDeCompeticao, Sexo sexo, int minimos, byte atletasPorProva, Date dataDaProva) {
         this.eventoId = eventoId;
         this.modalidadeId = modalidadeId;
         this.sexo = sexo;
+        this.diaDeCompeticao = diaDeCompeticao;
         this.minimos = minimos;
         this.atletasPorProva = atletasPorProva;
         this.dataDaProva = dataDaProva;
+    }
+
+    public String getNome() {
+        return nome;
     }
 
     public int getEventoId() {
@@ -32,6 +43,10 @@ public class Prova extends UniqueId {
 
     public int getModalidadeId() {
         return modalidadeId;
+    }
+
+    public String getDiaDeCompeticao() {
+        return diaDeCompeticao;
     }
 
     public Sexo getSexo() {

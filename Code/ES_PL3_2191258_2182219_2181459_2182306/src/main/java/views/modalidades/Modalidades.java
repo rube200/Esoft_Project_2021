@@ -6,6 +6,7 @@ import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import model.Modalidade;
+import model.SemDadosModalidades;
 import views.model.ModelCrud;
 import views.model.ModelListRender;
 
@@ -42,14 +43,17 @@ public class Modalidades implements ViewBase {
 
     @Override
     public boolean prepareView() {
-        Collection<Modalidade> modalidades = databaseConnector.getModalidades();
-        if (modalidades == null)
-            return false;
         modalidadesListModel.clear();
-        for (Modalidade modalidade : modalidades) {
-            ModelCrud<Modalidade> listRow = new ModelCrud<>(modalidade, () -> modalidadesController.edit(modalidade), () -> modalidadesController.destroy(modalidade));
-            modalidadesListModel.addElement(listRow);
+        Collection<Modalidade> modalidades = databaseConnector.getModalidades();
+        if (modalidades == null || modalidades.isEmpty())
+            modalidadesListModel.addElement(new ModelCrud<>(new SemDadosModalidades()));
+        else {
+            for (Modalidade modalidade : modalidades) {
+                ModelCrud<Modalidade> listRow = new ModelCrud<>(modalidade, () -> modalidadesController.edit(modalidade), () -> modalidadesController.destroy(modalidade));
+                modalidadesListModel.addElement(listRow);
+            }
         }
+        listModalidades.clearSelection();
 
         return true;
     }

@@ -20,6 +20,22 @@ class ModelListRow {
         modelName.setText(text);
     }
 
+    void hideButtons() {
+        if (buttonEdit.isVisible())
+            buttonEdit.setVisible(false);
+
+        if (buttonDelete.isVisible())
+            buttonDelete.setVisible(false);
+    }
+
+    void showButtons() {
+        if (!buttonEdit.isVisible())
+            buttonEdit.setVisible(true);
+
+        if (!buttonDelete.isVisible())
+            buttonDelete.setVisible(true);
+    }
+
     void setButtons() {
         setImage(buttonDelete, "imagens/delete.png", "[DELETE]");
         setImage(buttonEdit, "imagens/edit.png", "[EDIT]");

@@ -44,7 +44,7 @@ public class AtletasController implements CrudController<Atleta> {
             ex.printStackTrace();
         }
     }
-    
+
     @Override
     public void edit(Atleta atleta) {
         viewController.displayPopup(new NovoEditarAtleta(this, atleta));

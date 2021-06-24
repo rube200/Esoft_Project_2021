@@ -1,7 +1,6 @@
 package API;
 
 public interface CrudController<T> {
-    //todo limitar listas
     T create();
 
     void destroy(T data);

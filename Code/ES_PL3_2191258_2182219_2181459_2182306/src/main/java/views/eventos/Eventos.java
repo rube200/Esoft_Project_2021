@@ -1,16 +1,15 @@
 package views.eventos;
 
-import API.CrudController;
 import API.DatabaseConnector;
+import API.EventosController;
 import API.ViewBase;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import model.Evento;
+import model.SemDadosEventos;
 import views.model.ModelCrud;
 import views.model.ModelListRender;
 
 import javax.swing.*;
-import javax.swing.plaf.basic.BasicListUI;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -22,13 +21,12 @@ public class Eventos implements ViewBase {
     private JList<ModelCrud<Evento>> listEventos;
     private JButton buttonNovoEvento;
     private JButton btn_elimi;
-    private JButton btn_prog;
+    private JButton buttonPrograma;
     private JButton btn_importar;
     private JButton buttonVoltar;
 
     @Inject
-    @Named("EventosController")
-    private CrudController<Evento> eventosController;
+    private EventosController eventosController;
     @Inject
     private DatabaseConnector databaseConnector;
 
@@ -44,14 +42,18 @@ public class Eventos implements ViewBase {
 
     @Override
     public boolean prepareView() {
-        Collection<Evento> eventos = databaseConnector.getEventos();
-        if (eventos == null)
-            return false;
         eventosListModel.clear();
-        for (Evento evento : eventos) {
-            ModelCrud<Evento> listRow = new ModelCrud<>(evento, () -> eventosController.edit(evento), () -> eventosController.destroy(evento));
-            eventosListModel.addElement(listRow);
+        Collection<Evento> eventos = databaseConnector.getEventos();
+        if (eventos == null || eventos.isEmpty())
+            eventosListModel.addElement(new ModelCrud<>(new SemDadosEventos()));
+        else {
+            for (Evento evento : eventos) {
+                ModelCrud<Evento> listRow = new ModelCrud<>(evento, () -> eventosController.edit(evento), () -> eventosController.destroy(evento));
+                eventosListModel.addElement(listRow);
+            }
         }
+        listEventos.clearSelection();
+
         return true;
     }
 
@@ -62,6 +64,7 @@ public class Eventos implements ViewBase {
 
     private void setupButtons() {
         buttonNovoEvento.addActionListener(e -> eventosController.create());
+        buttonPrograma.addActionListener(e -> eventosController.mostrarPrograma());
     }
 
     private void setupList() {

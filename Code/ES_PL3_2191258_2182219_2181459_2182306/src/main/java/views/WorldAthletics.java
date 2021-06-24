@@ -2,14 +2,13 @@ package views;
 
 import API.CrudController;
 import API.DatabaseConnector;
+import API.InscricoesController;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import controllers.FileIOController;
 import controllers.MedalhasController;
-import model.Atleta;
-import model.Evento;
-import model.Modalidade;
-import model.Prova;
+import model.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,12 +18,12 @@ public class WorldAthletics implements ViewBase {
     private final DefaultListModel<Evento> eventosListModel = new DefaultListModel<>();
     private final DefaultListModel<Prova> provasListModel = new DefaultListModel<>();
     private JPanel mainPanel;
-    private JList<Evento> listEventos;//setLayoutOrientation(JList.HORIZONTAL_WRAP);
+    private JList<Evento> listEventos;
     private JList<Prova> listProvas;
     private JButton buttonDefinicoes;
     private JButton buttonAtletas;
     private JButton buttonModalidades;
-    private JButton buttonInscreverAtleta;
+    private JButton buttonVerInscricoes;
     private JButton buttonMedalhas;
     private JButton buttonTendencias;
     private JButton buttonGerirEventos;
@@ -38,6 +37,10 @@ public class WorldAthletics implements ViewBase {
     @Inject
     @Named("EventosController")
     private CrudController<Evento> eventosController;
+    @Inject
+    private FileIOController fileIOController;
+    @Inject
+    private InscricoesController inscricoesController;
     @Inject
     private MedalhasController medalhasController;
     @Inject
@@ -59,17 +62,21 @@ public class WorldAthletics implements ViewBase {
 
     @Override
     public boolean prepareView() {
-        Collection<Evento> eventos = databaseConnector.getEventosAtuais();
-        if (eventos == null)
-            return false;
         eventosListModel.clear();
-        eventosListModel.addAll(eventos);
+        Collection<Evento> eventos = databaseConnector.getEventosAtuais();
+        if (eventos == null || eventos.isEmpty())
+            eventosListModel.addElement(new SemDadosEventos());
+        else
+            eventosListModel.addAll(eventos);
+        listEventos.clearSelection();
 
-        Collection<Prova> provas = databaseConnector.getProvasAtuais();
-        if (provas == null)
-            return false;
         provasListModel.clear();
-        provasListModel.addAll(provas);
+        Collection<Prova> provas = databaseConnector.getProvasAtuais();
+        if (provas == null || provas.isEmpty())
+            provasListModel.addElement(new SemDadosProvas());
+        else
+            provasListModel.addAll(provas);
+        listProvas.clearSelection();
 
         return true;
     }
@@ -85,6 +92,12 @@ public class WorldAthletics implements ViewBase {
         buttonModalidades.addActionListener(e -> modalidadesController.index());
         buttonMedalhas.addActionListener(e -> medalhasController.mostrar());
         buttonAtletas.addActionListener(e -> atletasController.index());
+        buttonVerInscricoes.addActionListener(e -> inscricoesController.mostrarInscricoes());
+
+        buttonDefinicoes.addActionListener(e -> {
+            String setting = JOptionPane.showInputDialog("Introduza os dados sql: ", fileIOController.connectionString());
+            fileIOController.saveConnectionString(setting);
+        });
     }
 
     private void setupLists() {

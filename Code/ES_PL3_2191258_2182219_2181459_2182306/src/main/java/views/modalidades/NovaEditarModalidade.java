@@ -34,7 +34,6 @@ public class NovaEditarModalidade extends JDialog {
         // call onCancel() on ESCAPE
         mainPanel.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-
         setupButtons(controller);
         setupCombo();
     }
@@ -67,9 +66,21 @@ public class NovaEditarModalidade extends JDialog {
 
     private void onGuardar(CrudController<Modalidade> controller) {
         String nome = inputNome.getText();
-        if (nome.length() == 0) {
+        if (nome.isBlank()) {
             controller.mostrarAviso("Introduza o nome da Modalidade!");
             return;
+        }
+
+        if (nome.length() > 50) {
+            controller.mostrarAviso("O nome da Modalidade é muito longo!");
+            return;
+        }
+
+        try {
+            Integer.parseInt(nome);
+            controller.mostrarAviso("O nome da Modalidade é inválido!");
+            return;
+        } catch (Exception ignored) {
         }
 
         TipoDeContagem tipo = (TipoDeContagem) inputTipo.getSelectedItem();

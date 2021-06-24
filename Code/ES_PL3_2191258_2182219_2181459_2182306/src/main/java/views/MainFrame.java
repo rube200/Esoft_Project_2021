@@ -12,10 +12,4 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setPreferredSize(DefaultSize);
     }
-
-    @Override
-    public void dispose() {
-        super.dispose();
-        //todo
-    }
 }

@@ -83,9 +83,21 @@ public class NovoEditarEvento extends JDialog {
 
     private void onGuardar(CrudController<Evento> controller) {
         String nome = inputNome.getText();
-        if (nome.length() == 0) {
+        if (nome.isBlank()) {
             controller.mostrarAviso("Introduza o nome do Evento!");
             return;
+        }
+
+        if (nome.length() > 100) {
+            controller.mostrarAviso("O nome do Evento é muito longo!");
+            return;
+        }
+
+        try {
+            Integer.parseInt(nome);
+            controller.mostrarAviso("O nome do Evento é inválido!");
+            return;
+        } catch (Exception ignored) {
         }
 
         Date inicio = (Date) inputInicio.getValue();
@@ -106,15 +118,39 @@ public class NovoEditarEvento extends JDialog {
         }
 
         String pais = inputPais.getText();
-        if (pais.length() == 0) {
+        if (pais.isBlank()) {
             controller.mostrarAviso("Introduza o Pais do Evento!");
             return;
         }
 
-        String local = inputLocal.getText();
-        if (local.length() == 0) {
-            controller.mostrarAviso("Introduza o Local do  Evento!");
+        if (pais.length() > 75) {
+            controller.mostrarAviso("O nome do Pais é muito longo!");
             return;
+        }
+
+        try {
+            Integer.parseInt(pais);
+            controller.mostrarAviso("O nome do Pais é inválido!");
+            return;
+        } catch (Exception ignored) {
+        }
+
+        String local = inputLocal.getText();
+        if (local.isBlank()) {
+            controller.mostrarAviso("Introduza o Local d  Evento!");
+            return;
+        }
+
+        if (local.length() > 75) {
+            controller.mostrarAviso("O local do Evento é muito longo!");
+            return;
+        }
+
+        try {
+            Integer.parseInt(local);
+            controller.mostrarAviso("O local do Evento é inválido!");
+            return;
+        } catch (Exception ignored) {
         }
 
         evento = new Evento(nome, inicio, fim, pais, local);

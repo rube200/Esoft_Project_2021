@@ -2,11 +2,12 @@ package views.provas;
 
 import API.CrudController;
 import API.DatabaseConnector;
+import API.InscricoesController;
 import API.ViewBase;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import controllers.InscricoesController;
 import model.Prova;
+import model.SemDadosProvas;
 import views.model.ModelCrud;
 import views.model.ModelListRender;
 
@@ -15,6 +16,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collection;
+import java.util.Date;
 
 public class Provas implements ViewBase {
     private final DefaultListModel<ModelCrud<Prova>> provasListModel = new DefaultListModel<>();
@@ -23,7 +25,6 @@ public class Provas implements ViewBase {
     private JButton buttonNovaProva;
     private JButton buttonInscreverAtleta;
     private JButton buttonDetalhesProva;
-    private JButton buttonImportarProvas;
     private JButton buttonVoltar;
 
     @Inject
@@ -49,14 +50,17 @@ public class Provas implements ViewBase {
         buttonInscreverAtleta.setEnabled(false);
         buttonDetalhesProva.setEnabled(false);
 
-        Collection<Prova> provas = databaseConnector.getProvas();
-        if (provas == null)
-            return false;
         provasListModel.clear();
-        for (Prova prova : provas) {
-            ModelCrud<Prova> listRow = new ModelCrud<>(prova, () -> provasController.edit(prova), () -> provasController.destroy(prova));
-            provasListModel.addElement(listRow);
+        Collection<Prova> provas = databaseConnector.getProvas();
+        if (provas == null || provas.isEmpty())
+            provasListModel.addElement(new ModelCrud<>(new SemDadosProvas()));
+        else {
+            for (Prova prova : provas) {
+                ModelCrud<Prova> listRow = new ModelCrud<>(prova, () -> provasController.edit(prova), () -> provasController.destroy(prova));
+                provasListModel.addElement(listRow);
+            }
         }
+        listProvas.clearSelection();
 
         return true;
     }
@@ -70,24 +74,25 @@ public class Provas implements ViewBase {
         buttonNovaProva.addActionListener(e -> provasController.create());
         buttonInscreverAtleta.addActionListener(e -> {
             ModelCrud<Prova> modelCrud = listProvas.getSelectedValue();
-            if (modelCrud == null) {
-                buttonInscreverAtleta.setEnabled(false);
+            if (modelCrud == null)
                 return;
-            }
 
             Prova prova = modelCrud.getModel();
-            inscricoesController.mostrarInscreverAtleta(prova);
+            if (prova.getId() < 1)
+                return;
+
+            inscricoesController.mostrarInscreverEmProvaAtleta(prova);
         });
+        /* todo create view + call it
         buttonDetalhesProva.addActionListener(e -> {
             ModelCrud<Prova> modelCrud = listProvas.getSelectedValue();
-            if (modelCrud == null) {
-                buttonDetalhesProva.setEnabled(false);
+            if (modelCrud == null)
                 return;
-            }
 
             Prova prova = modelCrud.getModel();
-            //todo
-        });
+            if (prova.getId() < 1)
+                return;
+        });*/
     }
 
     private void setupList() {
@@ -98,22 +103,43 @@ public class Provas implements ViewBase {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int index = listProvas.locationToIndex(e.getPoint());
-                ModelCrud<Prova> model = listProvas.getModel().getElementAt(index);
-                if (model == null)
+                ModelCrud<Prova> modelCrud = listProvas.getModel().getElementAt(index);
+                if (modelCrud == null)
                     return;
 
-                model.onModelPress(e.getX(), e.getY());
+                modelCrud.onModelPress(e.getX(), e.getY());
             }
         });
         listProvas.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting())
                 return;
 
-            if (!buttonInscreverAtleta.isEnabled())
-                buttonInscreverAtleta.setEnabled(true);
+            ModelCrud<Prova> modelCrud = listProvas.getSelectedValue();
+            if (modelCrud == null)
+                return;
 
-            if (!buttonDetalhesProva.isEnabled())
-                buttonDetalhesProva.setEnabled(true);
+            Prova prova = modelCrud.getModel();
+            if (prova.getId() < 1) {
+                if (buttonInscreverAtleta.isEnabled())
+                    buttonInscreverAtleta.setEnabled(false);
+
+                /* later
+                if (buttonDetalhesProva.isEnabled())
+                    buttonDetalhesProva.setEnabled(false);*/
+            } else {
+                if (prova.getDataDaProvaTime() >= new Date().getTime()) {
+                    if (!buttonInscreverAtleta.isEnabled())
+                        buttonInscreverAtleta.setEnabled(true);
+                } else {
+                    if (buttonInscreverAtleta.isEnabled())
+                        buttonInscreverAtleta.setEnabled(false);
+                }
+
+                /*  later
+                if (!buttonDetalhesProva.isEnabled())
+                    buttonDetalhesProva.setEnabled(true);
+                    */
+            }
         });
     }
 }

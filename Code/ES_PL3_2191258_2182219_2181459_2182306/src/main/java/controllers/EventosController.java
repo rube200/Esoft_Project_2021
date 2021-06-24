@@ -1,6 +1,5 @@
 package controllers;
 
-import API.CrudController;
 import API.DatabaseConnector;
 import API.ViewBase;
 import com.google.inject.Inject;
@@ -8,8 +7,9 @@ import com.google.inject.name.Named;
 import model.Evento;
 import views.eventos.NovoEditarEvento;
 
-public class EventosController implements CrudController<Evento> {
+public class EventosController implements API.EventosController {
     private final ViewBase eventosView;
+    private final ViewBase programaView;
 
     @Inject
     private ViewController viewController;
@@ -17,9 +17,12 @@ public class EventosController implements CrudController<Evento> {
     private DatabaseConnector databaseConnector;
 
     @Inject
-    public EventosController(@Named("EventosView") ViewBase eventosView) {
+    public EventosController(@Named("EventosView") ViewBase eventosView, @Named("ProgramaView") ViewBase programaView) {
         this.eventosView = eventosView;
+        this.programaView = programaView;
+
         eventosView.setupBackButton(this::onBack);
+        programaView.setupBackButton(this::onBack);
     }
 
     private void onBack() {
@@ -81,5 +84,10 @@ public class EventosController implements CrudController<Evento> {
 
     public void mostrarAviso(String mensagem) {
         viewController.mostrarAviso(mensagem);
+    }
+
+    @Override
+    public void mostrarPrograma() {
+        viewController.displayView(programaView);
     }
 }

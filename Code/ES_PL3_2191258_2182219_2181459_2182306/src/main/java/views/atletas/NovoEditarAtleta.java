@@ -94,7 +94,7 @@ public class NovoEditarAtleta extends JDialog {
 
     private void onGuardar(CrudController<Atleta> controller) {
         String nome = inputNome.getText();
-        if (nome.length() == 0) {
+        if (nome.isBlank()) {
             controller.mostrarAviso("Introduza o nome do Atleta!");
             return;
         }
@@ -104,15 +104,29 @@ public class NovoEditarAtleta extends JDialog {
             return;
         }
 
+        try {
+            Integer.parseInt(nome);
+            controller.mostrarAviso("O nome do Atleta é inválido!");
+            return;
+        } catch (Exception ignored) {
+        }
+
         String pais = inputPais.getText();
-        if (pais.length() == 0) {
+        if (pais.isBlank()) {
             controller.mostrarAviso("Introduza o Pais do Atleta!");
             return;
         }
 
-        if (pais.length() > 255) {
+        if (pais.length() > 75) {
             controller.mostrarAviso("O nome do Pais é muito longo!");
             return;
+        }
+
+        try {
+            Integer.parseInt(pais);
+            controller.mostrarAviso("O nome do Pais é inválido!");
+            return;
+        } catch (Exception ignored) {
         }
 
         Sexo sexo = (Sexo) inputSexo.getSelectedItem();
@@ -123,7 +137,7 @@ public class NovoEditarAtleta extends JDialog {
         }
 
         String contacto = inputContacto.getText();
-        if (contacto.length() == 0) {
+        if (contacto.isBlank()) {
             controller.mostrarAviso("Introduza o Contacto do Atleta!");
             return;
         }

@@ -1,5 +1,7 @@
 package views.model;
 
+import model.UniqueId;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -12,7 +14,13 @@ public class ModelListRender<T extends ModelCrudRow> implements ListCellRenderer
 
     @Override
     public Component getListCellRendererComponent(JList<? extends T> list, T value, int index, boolean isSelected, boolean cellHasFocus) {
-        modelListRow.setButtons();
+        UniqueId model;
+        if (value == null || (model = value.getModel()) == null || model.getId() >= 1) {
+            modelListRow.showButtons();
+            modelListRow.setButtons();
+        } else
+            modelListRow.hideButtons();
+
         modelListRow.setText((value == null) ? "" : value.toString());
 
         JComponent component = modelListRow.getComponent();

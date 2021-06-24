@@ -9,6 +9,8 @@ import model.Prova;
 import model.UniqueId;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.text.DateFormatter;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
@@ -92,6 +94,40 @@ public class NovaEditarProva extends JDialog {
         }
         inputModalidade.addItem(new NovaModalidadeModel());
         inputModalidade.addItemListener(this::onComboChange);
+
+        inputDiaDeCompeticao.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                String diaDaComp = inputDiaDeCompeticao.getText();
+                if (diaDaComp.isBlank())
+                    return;
+
+                Evento evento = (Evento) inputEvento.getSelectedItem();
+                if (evento == null || evento.getId() < 1)
+                    return;
+
+                try {
+                    int dia = Integer.parseInt(diaDaComp);
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(evento.getInicio());
+                    cal.add(Calendar.DATE, dia);
+                    Date newDate = cal.getTime();
+                    if (newDate.getTime() > evento.getFimTime())
+                        return;
+
+                    inputData.setValue(newDate);
+                } catch (Exception ignored) {
+                }
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+            }
+        });
 
         for (Sexo sexo : Sexo.values()) {
             inputSexo.addItem(sexo);
@@ -178,7 +214,7 @@ public class NovaEditarProva extends JDialog {
             }
         }
 
-        if (selectedItem instanceof Evento evento)  {
+        if (selectedItem instanceof Evento evento) {
             DEFAULT_DATE_FORMATTER.setMinimum(evento.getInicio());
             DEFAULT_DATE_FORMATTER.setMaximum(evento.getFim());
             DefaultFormatterFactory factory = new DefaultFormatterFactory(DEFAULT_DATE_FORMATTER);
@@ -210,15 +246,12 @@ public class NovaEditarProva extends JDialog {
             break;
         }
 
-        /*inputDiaDeCompeticao.setText(prova.get);*/
+        inputDiaDeCompeticao.setText(prova.getDiaDeCompeticao());
         inputSexo.setSelectedItem(prova.getSexo());
         inputMinimos.setValue(prova.getMinimos());
         inputAtletasPorRonda.setValue((int) prova.getAtletasPorProva());
         inputData.setValue(prova.getDataDaProva());
         inputHora.setValue(prova.getDataDaProva());
-
-        System.out.println(prova.getAtletasPorProva());
-        System.out.println(inputAtletasPorRonda.getValue());
     }
 
     private void onCancel() {
@@ -227,7 +260,7 @@ public class NovaEditarProva extends JDialog {
 
     private void onGuardar(CrudController<Prova> controller) {
         Evento evento = (Evento) inputEvento.getSelectedItem();
-        if (evento == null || evento.getId() < 0) {
+        if (evento == null || evento.getId() < 1) {
             controller.mostrarAviso("Evento não encontrado.");
             return;
         }
@@ -239,15 +272,20 @@ public class NovaEditarProva extends JDialog {
         }
 
         String diaDeCompeticao = inputDiaDeCompeticao.getText();
-        if (diaDeCompeticao.length() == 0) {
+        if (diaDeCompeticao.isBlank()) {
             controller.mostrarAviso("Introduza o dia de competição");
+            return;
+        }
+
+        if (diaDeCompeticao.length() > 25) {
+            controller.mostrarAviso("O dia de competição é muito longo!");
             return;
         }
 
         Sexo sexo = (Sexo) inputSexo.getSelectedItem();
         int minimos = (int) inputMinimos.getValue();
         if (minimos <= 0) {
-            controller.mostrarAviso("Introduza um mínimo de acesso válido: " + minimos);
+            controller.mostrarAviso("Introduza um mínimo de acesso válido!");
             return;
         }
 
@@ -265,10 +303,10 @@ public class NovaEditarProva extends JDialog {
 
         Calendar cal = Calendar.getInstance();
         //noinspection deprecation
-        cal.set(dataDeProva.getYear(), dataDeProva.getMonth(), dataDeProva.getDay(), horaDeProva.getHours(), horaDeProva.getMinutes());
+        cal.set(dataDeProva.getYear() + 1900, dataDeProva.getMonth(), dataDeProva.getDate(), horaDeProva.getHours(), horaDeProva.getMinutes(), 0);
 
         byte atletasPorRonda = (byte) (int) inputAtletasPorRonda.getValue();
-        prova = new Prova(evento.getId(), modalidade.getId(), sexo, minimos, atletasPorRonda, cal.getTime());
+        prova = new Prova(evento.getId(), modalidade.getId(), diaDeCompeticao, sexo, minimos, atletasPorRonda, cal.getTime());
         if (provaId > 0) {
             prova.setId(provaId);
             controller.update(prova);
