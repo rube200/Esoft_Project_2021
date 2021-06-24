@@ -2,11 +2,9 @@ package API;
 
 public interface CrudController<T> {
     //todo limitar listas
-    //todo permitir enter para guardar
+    T create();
 
     void destroy(T data);
-
-    T create();
 
     void edit(T data);
 
