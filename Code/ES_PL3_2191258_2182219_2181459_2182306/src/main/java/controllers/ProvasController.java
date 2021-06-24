@@ -10,6 +10,7 @@ import model.Modalidade;
 import model.Prova;
 import views.provas.NovaEditarProva;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 public class ProvasController implements CrudController<Prova> {
@@ -59,11 +60,7 @@ public class ProvasController implements CrudController<Prova> {
 
     private Prova createOrEdit(Prova prova) {
         Collection<Evento> eventos = databaseConnector.getEventoAtuaisOuFuturos();
-        if (eventos == null) {
-            viewController.mostrarAviso("Falha ao ler eventos!");
-            return null;
-        }
-        if (eventos.isEmpty()) {
+        if (eventos == null || eventos.isEmpty()) {
             viewController.mostrarAviso("Não existem eventos guardados!");
             return null;
         }
@@ -80,9 +77,9 @@ public class ProvasController implements CrudController<Prova> {
 
         NovaEditarProva dialog;
         if (prova != null)
-            dialog = new NovaEditarProva(this, eventos, modalidades, prova);
+            dialog = new NovaEditarProva(this, new ArrayList<>(eventos), modalidades, prova);
         else
-            dialog = new NovaEditarProva(this, eventos, modalidades);
+            dialog = new NovaEditarProva(this, new ArrayList<>(eventos), modalidades);
         viewController.displayPopup(dialog);
         return dialog.getProva();
     }

@@ -1,11 +1,9 @@
 package controllers;
 
 import API.DatabaseConnector;
+import com.google.common.collect.Iterables;
 import com.google.inject.Inject;
-import model.Evento;
-import model.Modalidade;
-import model.Prova;
-import model.UniqueId;
+import model.*;
 
 import java.lang.reflect.Field;
 import java.sql.Date;
@@ -62,7 +60,8 @@ public class DatabaseQuery implements DatabaseConnector {
                     "`Modalidade_Id` INT NOT NULL, " +
                     "`Sexo` ENUM('M','F','X') NOT NULL, " +
                     "`Minimos` INT NOT NULL, " +
-                    "`Atletas_Por_Provas` TINYINT(1) UNSIGNED NOT NULL DEFAULT 8, " +
+                    "`Atletas_Por_Prova` TINYINT(1) UNSIGNED NOT NULL DEFAULT 8, " +
+                    "`Data_Da_Prova` DATETIME NOT NULL, " +
                     "`Deleted_At` TIMESTAMP NULL DEFAULT NULL, " +
                     "PRIMARY KEY (`Id`), " +
                     "KEY `Eventos_Provas` (`Evento_Id`), " +
@@ -70,11 +69,158 @@ public class DatabaseQuery implements DatabaseConnector {
                     "CONSTRAINT `Eventos_Provas` FOREIGN KEY (`Evento_Id`) REFERENCES `eventos` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Modalidades_Provas` FOREIGN KEY (`Modalidade_Id`) REFERENCES `modalidades` (`Id`) ON UPDATE CASCADE, " +
                     "CONSTRAINT `Validate_Minimos` CHECK (`Minimos` > '0'), " +
-                    "CONSTRAINT `Validate_Atletas_Por_Prova` CHECK (`Atletas_Por_Provas` > '1'));";
+                    "CONSTRAINT `Validate_Atletas_Por_Prova` CHECK (`Atletas_Por_Prova` > '1'));";
+            statement.execute(query);
+
+            query = "CREATE TABLE IF NOT EXISTS `atletas` (" +
+                    "`Id` INT AUTO_INCREMENT, " +
+                    "`Nome` VARCHAR(255) NOT NULL, " +
+                    "`Pais` VARCHAR(75) NOT NULL, " +
+                    "`Sexo` ENUM('M','F','X') NOT NULL, " +
+                    "`Data_De_Nascimento` DATE NOT NULL, " +
+                    "`Contacto` VARCHAR(255) NOT NULL, " +
+                    "`Data_De_Registo` DATE NOT NULL DEFAULT CURRENT_DATE()," +
+                    "`Deleted_At` TIMESTAMP NULL DEFAULT NULL, " +
+                    "PRIMARY KEY (`Id`), " +
+                    "CONSTRAINT `Validate_Nome` CHECK (`Nome` <> ''), " +
+                    "CONSTRAINT `Validate_Pais` CHECK (`Pais` <> ''), " +
+                    "CONSTRAINT `Validate_Data_De_Nascimento` CHECK (DATEDIFF(`Data_De_Registo`, `Data_De_Nascimento`) BETWEEN 2920 AND 36500), " +//2920 -> 8years | 36500year
+                    "CONSTRAINT `Validate_Contacto` CHECK (`Contacto` <> ''));";
+            statement.execute(query);
+
+            query = "CREATE TABLE IF NOT EXISTS `inscricoes` (" +
+                    "`Prova_Id` INT, " +
+                    "`Atleta_Id` INT, " +
+                    "PRIMARY KEY (`Prova_Id`, `Atleta_Id`), " +
+                    "KEY `Inscricoes_Provas` (`Prova_Id`), " +
+                    "KEY `Inscricoes_Atletas` (`Atleta_Id`), " +
+                    "CONSTRAINT `Inscricoes_Provas` FOREIGN KEY (`Prova_Id`) REFERENCES `provas` (`Id`) ON UPDATE CASCADE, " +
+                    "CONSTRAINT `Inscricoes_Atletas` FOREIGN KEY (`Atleta_Id`) REFERENCES `atletas` (`Id`) ON UPDATE CASCADE);";
             statement.execute(query);
 
             return true;
         });
+    }
+
+    @Override
+    public Collection<Atleta> getAtletasInscritos(Prova prova) {
+        //language=MariaDB
+        String query = "SELECT `atletas`.* " +
+                "FROM `atletas` " +
+                "INNER JOIN (" +
+                "SELECT `Atleta_Id` " +
+                "FROM `inscricoes` " +
+                "WHERE `Prova_Id` = ?" +
+                ") `inscricoes` " +
+                "ON `inscricoes`.`Atleta_Id` = `atletas`.`Id` " +
+                "WHERE `Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Atleta.class, query, prepare -> {
+            prepare.setInt(1, prova.getId());
+            return true;
+        });
+    }
+
+    @Override
+    public Collection<Atleta> getAtletasNaoInscritos(Prova prova) {
+        //language=MariaDB
+        String query = "SELECT `atletas`.* " +
+                "FROM `atletas` " +
+                "LEFT JOIN (" +
+                "SELECT `Atleta_Id` " +
+                "FROM `inscricoes` " +
+                "WHERE `Prova_Id` = ?" +
+                ") `inscricoes` " +
+                "ON `inscricoes`.`Atleta_Id` = `atletas`.`Id` " +
+                "WHERE `inscricoes`.`Atleta_Id` IS NULL AND " +
+                "`Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Atleta.class, query, prepare -> {
+            prepare.setInt(1, prova.getId());
+            return true;
+        });
+    }
+
+    @Override
+    public boolean delete(Atleta atleta) {
+        //language=MariaDB
+        String query = "UPDATE `atletas` " +
+                "SET `Deleted_At` = NOW() " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepare.setInt(1, atleta.getId());
+            return true;
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao apagar atleta! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+    @Override
+    public Collection<Atleta> getAtletas() {
+        //language=MariaDB
+        String query = "SELECT * " +
+                "FROM `atletas` " +
+                "WHERE `Deleted_At` IS NULL;";
+
+        return getDataFromQuery(Atleta.class, query);
+    }
+
+    @Override
+    public boolean store(Atleta atleta) {
+        //language=MariaDB
+        String query = "INSERT INTO `atletas` " +
+                "(`Nome`, `Pais`, `Sexo`, `Data_De_Nascimento`, `Contacto`) " +
+                "VALUES (?, ?, ?, ?, ?);";
+
+        return executeUpdate(query, prepare -> {
+            prepareAtleta(atleta, prepare);
+            return true;
+        }, result -> insertModelId(result, atleta), ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao guardar atleta! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    @Override
+    public boolean update(Atleta atleta) {
+        //language=MariaDB
+        String query = "UPDATE `atletas` " +
+                "SET `Nome` = ?, " +
+                "`Pais` = ?, " +
+                "`Sexo` = ?, " +
+                "`Data_De_Nascimento` = ?, " +
+                "`Contacto` = ? " +
+                "WHERE `Id`= ?;";
+
+        return executeUpdate(query, prepare -> {
+            prepareAtleta(atleta, prepare);
+            prepare.setInt(6, atleta.getId());
+            return true;
+        }, ex -> {
+            if (ex instanceof SQLNonTransientConnectionException sqlEx) {
+                viewController.mostrarAviso("Falha ao atualizar atleta! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                return;
+            }
+
+            logger.log(Level.WARNING, ex.getMessage(), ex);
+        });
+    }
+
+    private void prepareAtleta(Atleta atleta, PreparedStatement prepare) throws SQLException {
+        prepare.setString(1, atleta.getNome());
+        prepare.setString(2, atleta.getPais());
+        prepare.setString(3, atleta.getSexo().name());
+        prepare.setDate(4, new Date(atleta.getDataDeNascimentoTime()));
+        prepare.setString(5, atleta.getContacto());
     }
 
     @Override
@@ -89,7 +235,7 @@ public class DatabaseQuery implements DatabaseConnector {
             return true;
         }, ex -> {
             if (ex instanceof SQLNonTransientConnectionException sqlEx) {
-                viewController.mostrarAviso("Falha ao atualizar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
+                viewController.mostrarAviso("Falha ao apagar evento! | Erro: Falha ao connectar com a base de dados | Code:" + sqlEx.getSQLState());
                 return;
             }
 
@@ -98,31 +244,56 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     @Override
+    public Evento getEvento(Prova prova) {
+        //language=MariaDB
+        String query = "SELECT * " +
+                "FROM `eventos` " +
+                "WHERE `Id` = ? AND " +
+                "`Deleted_At` IS NULL;";
+
+        Collection<Evento> eventos = getDataFromQuery(Evento.class, query, prepare -> {
+            prepare.setInt(1, prova.getEventoId());
+            return true;
+        });
+
+        if (eventos == null || eventos.isEmpty())
+            return null;
+
+        return Iterables.get(eventos, 0);
+    }
+
+    @Override
     public Collection<Evento> getEventos() {
-        return getEventos(false, true);
+        return getEventos(false, true, true);
     }
 
     @Override
     public Collection<Evento> getEventosAtuais() {
-        return getEventos(true, false);
+        return getEventos(true, false, false);
+    }
+
+    @Override
+    public Collection<Evento> getEventoAtuaisOuAnteriores() {
+        return getEventos(true, true, false);
     }
 
     @Override
     public Collection<Evento> getEventoAtuaisOuFuturos() {
-        return getEventos(true, true);
+        return getEventos(true, false, true);
     }
 
-    private Collection<Evento> getEventos(boolean decorrer, boolean futuros) {
+    /**
+     * when decorrer is false, antigos and futuros are ignored
+     */
+    private Collection<Evento> getEventos(boolean decorrer, boolean antigos, boolean futuros) {
         //language=MariaDB
         String query = "SELECT * " +
                 "FROM `eventos` " +
                 "WHERE " + (decorrer ?
-                "`Inicio` <= UTC_DATE() AND " +
-                        (!futuros ?
-                                "`Fim` >= UTC_DATE() AND "
-                                : "") : "") +
+                (!antigos  ? "`Fim` >= CURRENT_DATE() AND " : "") +
+                (!futuros ? "`Inicio` <= CURRENT_DATE() AND " : "")
+                : "") +
                 "`Deleted_At` IS NULL;";
-
 
         return getDataFromQuery(Evento.class, query);
     }
@@ -135,11 +306,7 @@ public class DatabaseQuery implements DatabaseConnector {
                 "VALUES (?, ?, ?, ?, ?);";
 
         return executeUpdate(query, prepare -> {
-            prepare.setString(1, evento.getNome());
-            prepare.setDate(2, new Date(evento.getInicioTime()));
-            prepare.setDate(3, new Date(evento.getFimTime()));
-            prepare.setString(4, evento.getPais());
-            prepare.setString(5, evento.getLocal());
+            prepareEvento(evento, prepare);
             return true;
         }, result -> insertModelId(result, evento), ex -> {
             if (ex instanceof SQLNonTransientConnectionException sqlEx) {
@@ -163,11 +330,7 @@ public class DatabaseQuery implements DatabaseConnector {
                 "WHERE `Id`= ?;";
 
         return executeUpdate(query, prepare -> {
-            prepare.setString(1, evento.getNome());
-            prepare.setDate(2, new Date(evento.getInicioTime()));
-            prepare.setDate(3, new Date(evento.getFimTime()));
-            prepare.setString(4, evento.getPais());
-            prepare.setString(5, evento.getLocal());
+            prepareEvento(evento, prepare);
             prepare.setInt(6, evento.getId());
             return true;
         }, ex -> {
@@ -178,6 +341,14 @@ public class DatabaseQuery implements DatabaseConnector {
 
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
+    }
+
+    private void prepareEvento(Evento evento, PreparedStatement prepare) throws SQLException {
+        prepare.setString(1, evento.getNome());
+        prepare.setDate(2, new Date(evento.getInicioTime()));
+        prepare.setDate(3, new Date(evento.getFimTime()));
+        prepare.setString(4, evento.getPais());
+        prepare.setString(5, evento.getLocal());
     }
 
     @Override
@@ -212,19 +383,19 @@ public class DatabaseQuery implements DatabaseConnector {
 
     private Collection<Prova> getProvas(boolean decorrer) {
         //language=MariaDB
-        String query = "SELECT `provas`.* " +
+        String query = "SELECT `provas`.*, CONCAT(`eventos`.`Nome`, ' - ', `modalidades`.`Nome`) AS nome " +
                 "FROM `provas` " +
                 "INNER JOIN (" +
-                "SELECT `Id` " +
+                "SELECT `Id`, `Nome` " +
                 "FROM `eventos` " +
                 "WHERE " + (decorrer ?
-                "`Inicio` <= UTC_DATE() AND " +
-                        "`Fim` >= UTC_DATE() AND " : "") +
+                "`Inicio` <= CURRENT_DATE() AND " +
+                        "`Fim` >= CURRENT_DATE() AND " : "") +
                 "`Deleted_At` IS NULL" +
                 ") `eventos` " +
                 "ON `eventos`.`Id` = `provas`.`Evento_Id` " +
                 "INNER JOIN (" +
-                "SELECT `Id` " +
+                "SELECT `Id`, `Nome` " +
                 "FROM `modalidades` " +
                 "WHERE `Deleted_At` IS NULL" +
                 ") `modalidades` " +
@@ -238,15 +409,11 @@ public class DatabaseQuery implements DatabaseConnector {
     public boolean store(Prova prova) {
         //language=MariaDB
         String query = "INSERT INTO `provas` " +
-                "(`Evento_Id`, `Modalidade_Id`, `Sexo`, `Minimos`, `Atletas_Por_Provas`) " +
-                "VALUES (?, ?, ?, ?, ?);";
+                "(`Evento_Id`, `Modalidade_Id`, `Sexo`, `Minimos`, `Atletas_Por_Prova`, `Data_Da_Prova`) " +
+                "VALUES (?, ?, ?, ?, ?, ?);";
 
         return executeUpdate(query, prepare -> {
-            prepare.setInt(1, prova.getEventoId());
-            prepare.setInt(2, prova.getModalidadeId());
-            prepare.setString(3, prova.getSexo().name());
-            prepare.setInt(4, prova.getMinimos());
-            prepare.setByte(5, prova.getAtletasPorProva());
+            prepareProva(prova, prepare);
             return true;
         }, result -> insertModelId(result, prova), ex -> {
             if (ex instanceof SQLNonTransientConnectionException sqlEx) {
@@ -266,16 +433,13 @@ public class DatabaseQuery implements DatabaseConnector {
                 "`Modalidade_Id` = ?, " +
                 "`Sexo` = ?, " +
                 "`Minimos` = ?, " +
-                "`Atletas_Por_Provas` = ? " +
+                "`Atletas_Por_Prova` = ?, " +
+                "`Data_Da_Prova` = ? " +
                 "WHERE `Id`= ?;";
 
         return executeUpdate(query, prepare -> {
-            prepare.setInt(1, prova.getEventoId());
-            prepare.setInt(2, prova.getModalidadeId());
-            prepare.setString(3, prova.getSexo().name());
-            prepare.setInt(4, prova.getMinimos());
-            prepare.setByte(5, prova.getAtletasPorProva());
-            prepare.setInt(6, prova.getId());
+            prepareProva(prova, prepare);
+            prepare.setInt(7, prova.getId());
             return true;
         }, ex -> {
             if (ex instanceof SQLNonTransientConnectionException sqlEx) {
@@ -285,6 +449,15 @@ public class DatabaseQuery implements DatabaseConnector {
 
             logger.log(Level.WARNING, ex.getMessage(), ex);
         });
+    }
+
+    private void prepareProva(Prova prova, PreparedStatement prepare) throws SQLException {
+        prepare.setInt(1, prova.getEventoId());
+        prepare.setInt(2, prova.getModalidadeId());
+        prepare.setString(3, prova.getSexo().name());
+        prepare.setInt(4, prova.getMinimos());
+        prepare.setByte(5, prova.getAtletasPorProva());
+        prepare.setTimestamp(6, new Timestamp(prova.getDataDaProvaTime()));
     }
 
     @Override
@@ -361,9 +534,82 @@ public class DatabaseQuery implements DatabaseConnector {
         });
     }
 
-    private <T> Collection<T> getDataFromQuery(Class<T> implementation, String sql) {
+    @Override
+    public boolean inscreverAtletasEmProva(Prova prova, List<Atleta> inscrever, List<Atleta> desinscrever) {
+        int provaId = prova.getId();
+        return getConnection(connection -> {
+            connection.setAutoCommit(false);
+
+            if (!inscrever.isEmpty()) {
+                StringBuilder queryBuilder = new StringBuilder("INSERT IGNORE INTO `inscricoes` " +
+                        "(`Prova_Id`, `Atleta_Id`) VALUES ");
+
+                int size = inscrever.size();
+                for (int i = 1; i <= size; i++)
+                {
+                    queryBuilder.append("(?, ?)");
+                    if (i == size)
+                        queryBuilder.append(";");
+                    else
+                        queryBuilder.append(", ");
+                }
+
+                if (prepareInscreverAtletaEmProva(inscrever, provaId, connection, queryBuilder, size))
+                    return false;
+            }
+
+            if (!desinscrever.isEmpty()) {
+                StringBuilder queryBuilder = new StringBuilder("DELETE FROM`inscricoes` " +
+                        "WHERE ");
+
+                int size = desinscrever.size();
+                for (int i = 1; i <= size; i++)
+                {
+                    queryBuilder.append("(`Prova_Id` = ? AND `Atleta_Id` = ?)");
+                    if (i == size)
+                        queryBuilder.append(";");
+                    else
+                        queryBuilder.append(" OR ");
+                }
+
+                if (prepareInscreverAtletaEmProva(desinscrever, provaId, connection, queryBuilder, size))
+                    return false;
+            }
+
+            connection.commit();
+            return true;
+        }, ex -> logger.log(Level.WARNING, ex.getMessage(), ex));
+    }
+
+    private boolean prepareInscreverAtletaEmProva(List<Atleta> collection, int provaId, Connection connection, StringBuilder queryBuilder, int size) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())) {
+            for (int i = 1; i <= size; i++)
+            {
+                Atleta atleta = collection.get(i-1);
+                int sqlIndex = i * 2;
+                preparedStatement.setInt(sqlIndex - 1, provaId);
+                preparedStatement.setInt(sqlIndex, atleta.getId());
+            }
+
+            if (preparedStatement.executeUpdate() == 0)
+                return true;
+        }
+        return false;
+    }
+
+    private <T> Collection<T> getDataFromQuery(Class<T> implementation, String query) {
         Collection<T> dataToReturn = new ArrayList<>();
-        boolean success = executeQuery(sql, result -> {
+        boolean success = executeQuery(query, result -> {
+            Collection<T> data = getDataFromResult(implementation, result);
+            dataToReturn.addAll(data);
+            return true;
+        });
+
+        return success ? dataToReturn : null;
+    }
+    private <T> Collection<T> getDataFromQuery(Class<T> implementation, String query, SqlExecute<PreparedStatement> preparedQuery) {
+        Collection<T> dataToReturn = new ArrayList<>();
+        boolean success = executeQuery(query, preparedQuery, result -> {
             Collection<T> data = getDataFromResult(implementation, result);
             dataToReturn.addAll(data);
             return true;
@@ -375,7 +621,7 @@ public class DatabaseQuery implements DatabaseConnector {
     private <T> Collection<T> getDataFromResult(Class<T> implementation, ResultSet resultSet) throws ReflectiveOperationException, SQLException {
         ResultSetMetaData sqlMetaData = resultSet.getMetaData();
 
-        Map<String, String> sqlColNameLabel = new HashMap<>();
+        Map<String, Integer> sqlColNameIndex = new HashMap<>();
         Map<String, String> sqlColNameOrig = new HashMap<>();
 
         int colCount = sqlMetaData.getColumnCount();
@@ -385,9 +631,8 @@ public class DatabaseQuery implements DatabaseConnector {
             String name = convertSqlNamingToJava(originalName);
 
             String lowerName = name.toLowerCase();
-            String label = sqlMetaData.getColumnLabel(i);
 
-            sqlColNameLabel.put(lowerName, label);
+            sqlColNameIndex.put(lowerName, i);
             sqlColNameOrig.put(lowerName, name);
         }
 
@@ -399,7 +644,7 @@ public class DatabaseQuery implements DatabaseConnector {
             String fieldNameLower = fieldName.toLowerCase();
 
             //Não existe entrada para este field na base de dados
-            if (!sqlColNameLabel.containsKey(fieldNameLower))
+            if (!sqlColNameIndex.containsKey(fieldNameLower))
                 continue;
 
             field.setAccessible(true);
@@ -423,23 +668,26 @@ public class DatabaseQuery implements DatabaseConnector {
 
             for (Map.Entry<String, Field> entry : fieldsToFill.entrySet()) {
                 String fieldName = entry.getKey();
-                String label = sqlColNameLabel.get(fieldName);
+                Integer colIndex = sqlColNameIndex.get(fieldName);
 
                 Field field = entry.getValue();
                 Class<?> fieldType = field.getType();
-                Object value = resultSet.getObject(label);
+                Object value = resultSet.getObject(colIndex);
 
                 if (fieldType.isEnum()) {
                     //Tristemente em Java é impossível converter estas comparações para um switch
-                    if (fieldType == API.Genero.class) {
-                        value = API.Genero.valueOf(value.toString());//String.valueOf(Object obj) => obj != null ? obj.toString() ...
-                    } else if (fieldType == API.Sexo.class) {
-                        value = API.Sexo.valueOf(value.toString());
+                    if (fieldType == API.Sexo.class) {
+                        value = API.Sexo.valueOf(value.toString());//String.valueOf(Object obj) => obj != null ? obj.toString() ...
                     } else if (fieldType == API.TipoDeContagem.class) {
                         value = API.TipoDeContagem.valueOf(value.toString());
                     } else {
                         throw new IllegalArgumentException("Unknown Enum type: " + fieldType);
                     }
+                }
+
+                //Fix sql not converting TinyInt to Byte
+                if ((field.getType() == byte.class || field.getType() == Byte.class) && value.getClass() == Integer.class) {
+                    value = (byte) (int) value;
                 }
 
                 field.set(obj, value);
@@ -503,7 +751,11 @@ public class DatabaseQuery implements DatabaseConnector {
     }
 
     private boolean executeQuery(String sql, SqlExecute<ResultSet> result) {
-        return executeQuery(sql, null, result, null);
+        return executeQuery(sql, null, result);
+    }
+
+    private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result) {
+        return executeQuery(sql, preparedQuery, result, null);
     }
 
     private boolean executeQuery(String sql, SqlExecute<PreparedStatement> preparedQuery, SqlExecute<ResultSet> result, Consumer<Exception> exceptionCallback) {
@@ -556,12 +808,6 @@ public class DatabaseQuery implements DatabaseConnector {
 
     @FunctionalInterface
     private interface SqlExecute<T> {
-        /**
-         * Executa esta operação no argumento fornecido.
-         *
-         * @param action ação a ser executada
-         * @return deverá retornar verdadeiro(true) se a operação foi concluida com sucesso, senão falso(false) | se retornar falso(false) a execução de operações deverá parar
-         */
         boolean invoke(T action) throws ReflectiveOperationException, SQLException;
     }
 }

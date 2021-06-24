@@ -50,6 +50,7 @@ public class ViewController {
 
     void displayPopup(JDialog dialog) {
         dialog.pack();
+        dialog.setLocationRelativeTo(mainWindow);
         dialog.setVisible(true);
     }
 
@@ -59,5 +60,9 @@ public class ViewController {
 
     void onBackRequested() {
         displayView(worldAthleticsView);
+    }
+
+    public void mostrarMensagem(String mensagem) {
+        JOptionPane.showMessageDialog(mainWindow, mensagem, "Sucesso", JOptionPane.INFORMATION_MESSAGE);
     }
 }
