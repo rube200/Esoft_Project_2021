@@ -25,4 +25,19 @@ public abstract class UniqueId {
 
         this.id = id;
     }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof UniqueId uniqueId && uniqueId.id == id;
+    }
+
+    @Override
+    public String toString() {
+        return "UniqueId: " + id;
+    }
 }

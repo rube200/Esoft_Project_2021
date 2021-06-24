@@ -26,4 +26,9 @@ public class Modalidade extends UniqueId {
     public TipoDeContagem getTipoDeContagem() {
         return tipoDeContagem;
     }
+
+    @Override
+    public String toString() {
+        return nome;
+    }
 }
